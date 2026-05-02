@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import "leaflet/dist/leaflet.css";
+
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Barlow+Condensed:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #070b14;
+  color: #f0f4f8;
+  font-family: 'Barlow Condensed', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: #0d1321; }
+::-webkit-scrollbar-thumb { background: #1e2d40; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #2a4060; }
+
+::selection { background: rgba(59, 130, 246, 0.3); }
+
+.hud-number {
+  font-family: 'Rajdhani', monospace;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-panel {
+  background: #0d1321;
+  border: 1px solid #1e2d40;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Sol GCS kolonunda başlıklarının kesilmemesi için (geniş içerik saran alana taşır, dikey kaydırma aside içinde) */
+.gcs-sidebar-inner .hud-panel {
+  overflow: visible;
+  min-width: 0;
+}
+
+.gcs-sidebar-inner {
+  min-width: 0;
+}
+
+.gcs-sidebar-inner .hud-panel,
+.gcs-sidebar-inner .tracking-widest {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.gcs-sidebar-inner .gcs-single-line-meta {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.gcs-sidebar > .gcs-sidebar-inner {
+  flex: 1 1 auto;
+}
+
+.hud-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 24px;
+  height: 2px;
+  background: #3b82f6;
+}
+
+.value-flash {
+  animation: flash-update 0.15s ease-out;
+}
+
+/* Leaflet'i karanlık temaya uyarla */
+.leaflet-container {
+  background: #070b14 !important;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Tile katmanı — gece modu filtresi */
+.leaflet-tile-pane {
+  filter: brightness(0.6) saturate(0.8) hue-rotate(180deg) invert(1);
+}
+
+/* Leaflet kontrol düğmelerini gizle (kendi kontrollerimizi yapacağız) */
+.leaflet-control-zoom { display: none; }
+.leaflet-control-attribution {
+  background: rgba(7, 11, 20, 0.7) !important;
+  color: #4a6080 !important;
+  font-size: 9px !important;
+}
+.leaflet-control-attribution a { color: #4a6080 !important; }
+
+/* Waypoint marker etiketleri için özel tooltip */
+.waypoint-tooltip {
+  background: #0d1321 !important;
+  border: 1px solid #1e2d40 !important;
+  color: #8ba3be !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 10px !important;
+  padding: 2px 6px !important;
+  border-radius: 2px !important;
+  box-shadow: none !important;
+}
+.waypoint-tooltip::before { display: none !important; }
+
+/* Drone ikonu animasyonu */
+.drone-icon-active {
+  animation: drone-pulse 1.5s ease-in-out infinite;
+}
+@keyframes drone-pulse {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.6)); }
+  50%       { filter: drop-shadow(0 0 12px rgba(59, 130, 246, 1.0)); }
+}
