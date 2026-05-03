@@ -23,9 +23,12 @@ import { useConnectionStore } from './store/connectionStore';
 import { useControlStore } from './store/controlStore';
 import { useTelemetryStore } from './store/telemetryStore';
 
-const FlightModeBadge: React.FC = () => {
+/** Sol panel üstü: ARM / mod + koordinat, tek satır */
+const SidebarStatusStrip: React.FC = () => {
   const flightMode = useTelemetryStore((s) => s.flightMode);
   const armed = useTelemetryStore((s) => s.armed);
+  const lat = useTelemetryStore((s) => s.lat);
+  const lon = useTelemetryStore((s) => s.lon);
 
   const modeColor =
     flightMode === 'AUTO'
@@ -36,66 +39,59 @@ const FlightModeBadge: React.FC = () => {
           ? '#3b82f6'
           : '#8ba3be';
 
+  const coordLabel = `${lat.toFixed(5)}°N · ${Math.abs(lon).toFixed(5)}°W`;
+
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex items-center gap-1.5">
+    <div
+      className="flex w-full min-w-0 items-center justify-between gap-2 rounded px-1.5 py-1"
+      style={{
+        border: '1px solid #1e2d40',
+        backgroundColor: '#0a101a',
+      }}
+    >
+      <div className="flex min-w-0 flex-shrink-0 items-center gap-1">
         <div
           style={{
-            width: 8,
-            height: 8,
+            width: 6,
+            height: 6,
             borderRadius: '50%',
+            flexShrink: 0,
             backgroundColor: armed ? '#ef4444' : '#4a6080',
-            boxShadow: armed ? '0 0 6px #ef4444' : 'none',
+            boxShadow: armed ? '0 0 4px #ef4444' : 'none',
           }}
         />
         <span
-          className="text-xs font-bold"
+          className="font-bold leading-none"
           style={{
             color: armed ? '#ef4444' : '#4a6080',
             fontFamily: "'Barlow Condensed', sans-serif",
-            letterSpacing: '0.05em',
+            letterSpacing: '0.04em',
+            fontSize: 10,
           }}
         >
           {armed ? 'ARMED' : 'DISARMED'}
         </span>
+        <span
+          className="rounded px-1 py-0 font-bold leading-none"
+          style={{
+            color: modeColor,
+            backgroundColor: `${modeColor}18`,
+            border: `1px solid ${modeColor}40`,
+            fontFamily: "'Barlow Condensed', sans-serif",
+            letterSpacing: '0.06em',
+            fontSize: 10,
+          }}
+        >
+          {flightMode}
+        </span>
       </div>
-
       <div
-        className="px-3 py-1 rounded text-sm font-bold"
-        style={{
-          color: modeColor,
-          backgroundColor: `${modeColor}18`,
-          border: `1px solid ${modeColor}50`,
-          fontFamily: "'Barlow Condensed', sans-serif",
-          letterSpacing: '0.08em',
-        }}
+        className="hud-mono min-w-0 flex-1 truncate text-right leading-none"
+        style={{ color: '#5a7090', fontSize: 10 }}
+        title={coordLabel}
       >
-        {flightMode}
+        {coordLabel}
       </div>
-    </div>
-  );
-};
-
-const CoordinateDisplay: React.FC = () => {
-  const lat = useTelemetryStore((s) => s.lat);
-  const lon = useTelemetryStore((s) => s.lon);
-
-  return (
-    <div
-      className="hud-mono"
-      style={{
-        color: '#4a6080',
-        fontSize: 11,
-        lineHeight: 1.35,
-        wordBreak: 'break-all',
-        overflowWrap: 'anywhere',
-        minWidth: 0,
-        maxWidth: '100%',
-      }}
-    >
-      <span>{lat.toFixed(5)}°N</span>
-      <span style={{ margin: '0 0.35em', color: '#2a4060' }}>·</span>
-      <span>{Math.abs(lon).toFixed(5)}°W</span>
     </div>
   );
 };
@@ -140,28 +136,24 @@ export default function App() {
           background: 'linear-gradient(to right, #0d1321, #070b14)',
         }}
       >
-        <div className="flex flex-col gap-1 flex-shrink-0" style={{ minWidth: 0, maxWidth: 'min(420px, 100%)' }}>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <div
-              style={{
-                fontFamily: "'Orbitron', monospace",
-                color: '#3b82f6',
-                fontSize: 18,
-                fontWeight: 700,
-                letterSpacing: '0.1em',
-              }}
-            >
-              V-TECH
-            </div>
-            <div
-              className="text-hud-dim text-xs"
-              style={{ fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.05em' }}
-            >
-              GCS · SUAS 2026 · Skyway Range, Tulsa OK
-            </div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 flex-shrink-0" style={{ minWidth: 0, maxWidth: 'min(420px, 100%)' }}>
+          <div
+            style={{
+              fontFamily: "'Orbitron', monospace",
+              color: '#3b82f6',
+              fontSize: 18,
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+            }}
+          >
+            V-TECH
           </div>
-          <FlightModeBadge />
-          <CoordinateDisplay />
+          <div
+            className="text-hud-dim text-xs"
+            style={{ fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.05em' }}
+          >
+            GCS · SUAS 2026 · Skyway Range, Tulsa OK
+          </div>
         </div>
 
         <div className="flex flex-1 items-center justify-center min-w-[200px] basis-[280px]">
@@ -250,8 +242,9 @@ export default function App() {
             alignSelf: 'stretch',
           }}
         >
-          {/* EN ÜST: Battery SOC (TelemetryReadout) öncesi — her zaman görünür */}
+          {/* EN ÜST: durum şeridi + kamera — her zaman görünür */}
           <div className="flex flex-col gap-2 shrink-0" style={{ minWidth: 0 }}>
+            <SidebarStatusStrip />
             <CameraSection />
             <CompassSection />
           </div>
