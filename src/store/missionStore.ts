@@ -125,6 +125,18 @@ function computeScanLines(boundary: LatLon[], altitudeFt: number): Array<{ start
   return lines;
 }
 
+/** Harita / Judge ile aynı: uçuş sınırı köşelerinin eksen hizalı sınırlayıcı kutusu (iç/dış). */
+export function isOutsideFlightBoundingBox(lat: number, lon: number, boundary: FlightBoundary): boolean {
+  const lats = boundary.points.map((p) => p.lat);
+  const lons = boundary.points.map((p) => p.lon);
+  return (
+    lat < Math.min(...lats) ||
+    lat > Math.max(...lats) ||
+    lon < Math.min(...lons) ||
+    lon > Math.max(...lons)
+  );
+}
+
 interface MissionStoreState {
   activeRunway: 'RWY1' | 'RWY2';
 
@@ -141,7 +153,11 @@ interface MissionStoreState {
   detectedTentLocation: LatLon | null;
   detectedMannequinLocation: LatLon | null;
 
+  /** MissionTimer 45 dk aşımı → PenaltyTracker ile senkron (sn). */
+  timerOvertimeSec: number;
+
   setActiveRunway: (rwy: 'RWY1' | 'RWY2') => void;
+  setTimerOvertimeSec: (sec: number) => void;
   updateWaypoint: (id: string, changes: Partial<Waypoint>) => void;
   setWaypointStatus: (id: string, status: Waypoint['status']) => void;
   selectWaypoint: (id: string | null) => void;
@@ -184,7 +200,10 @@ export const useMissionStore = create<MissionStoreState>((set) => ({
   detectedTentLocation: null,
   detectedMannequinLocation: null,
 
+  timerOvertimeSec: 0,
+
   setActiveRunway: (rwy) => set({ activeRunway: rwy }),
+  setTimerOvertimeSec: (sec) => set({ timerOvertimeSec: Math.max(0, Math.floor(sec)) }),
 
   updateWaypoint: (id, changes) =>
     set((state) => {

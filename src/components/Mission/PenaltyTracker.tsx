@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { isOutsideFlightBoundingBox, useMissionStore } from '../../store/missionStore';
+import { useTelemetryStore } from '../../store/telemetryStore';
 
 interface PenaltyType {
   id: string;
@@ -8,6 +10,8 @@ interface PenaltyType {
   /** Süre bazlı olanlar liste dışında ayrılır */
   perSecond: boolean;
 }
+
+const OUT_OF_BOUNDS_PTS = 9999;
 
 const PENALTY_TYPES: PenaltyType[] = [
   { id: 'overtime', label: 'Süre Aşımı', rule: '3.7', points: 0, perSecond: true },
@@ -36,7 +40,7 @@ const PENALTY_TYPES: PenaltyType[] = [
     id: 'out_of_bounds',
     label: 'Sınır İhlali',
     rule: '3.7',
-    points: 9999,
+    points: OUT_OF_BOUNDS_PTS,
     perSecond: false,
   },
 ];
@@ -50,6 +54,32 @@ export const PenaltyTracker: React.FC = () => {
   const [penalties, setPenalties] = useState<Record<string, number>>({});
   const [overtimeSec, setOvertimeSec] = useState(0);
 
+  const timerOvertimeSec = useMissionStore((s) => s.timerOvertimeSec);
+  const flightBoundary = useMissionStore((s) => s.flightBoundary);
+  const lat = useTelemetryStore((s) => s.lat);
+  const lon = useTelemetryStore((s) => s.lon);
+  const prevInsideBoundaryRef = useRef(true);
+
+  useEffect(() => {
+    setOvertimeSec(timerOvertimeSec);
+  }, [timerOvertimeSec]);
+
+  const outsideFlight = useMemo(
+    () => isOutsideFlightBoundingBox(lat, lon, flightBoundary),
+    [lat, lon, flightBoundary]
+  );
+
+  useEffect(() => {
+    const inside = !outsideFlight;
+    if (prevInsideBoundaryRef.current && !inside) {
+      setPenalties((prev) => ({
+        ...prev,
+        out_of_bounds: OUT_OF_BOUNDS_PTS,
+      }));
+    }
+    prevInsideBoundaryRef.current = inside;
+  }, [outsideFlight]);
+
   const instantaneousTotal = Object.values(penalties).reduce((a, b) => a + b, 0);
 
   const overtimePts = Math.round(overtimeSec * OVERTIME_PTS_PER_SEC);
@@ -62,8 +92,31 @@ export const PenaltyTracker: React.FC = () => {
 
   const hasAnyInstantPenalty = instantaneousTotal > 0;
 
+  const showBoundaryBanner = outsideFlight || (penalties.out_of_bounds ?? 0) > 0;
+
   return (
     <div className="hud-panel flex min-w-0 flex-col gap-2 p-3">
+      {showBoundaryBanner && (
+        <div
+          className="animate-pulse"
+          style={{
+            padding: '8px 10px',
+            borderRadius: 4,
+            backgroundColor: '#7f1d1d',
+            border: '2px solid #ef4444',
+            color: '#fecaca',
+            fontFamily: "'Barlow Condensed', sans-serif",
+            fontSize: 12,
+            fontWeight: 700,
+            letterSpacing: '0.06em',
+            textAlign: 'center',
+            lineHeight: 1.35,
+          }}
+        >
+          UÇUŞ SINIRI İHLALİ — Rule 3.7 — Sınır İhlali otomatik işaretlendi
+        </div>
+      )}
+
       <div
         className="min-w-0"
         style={{
@@ -162,7 +215,7 @@ export const PenaltyTracker: React.FC = () => {
               whiteSpace: 'nowrap',
             }}
           >
-            −{penalty.points === 9999 ? 'SONLANDIRMA' : `${penalty.points} pts`}
+            −{penalty.points === OUT_OF_BOUNDS_PTS ? 'SONLANDIRMA' : `${penalty.points} pts`}
           </span>
           <button
             type="button"
@@ -187,7 +240,14 @@ export const PenaltyTracker: React.FC = () => {
       {hasAnyInstantPenalty && (
         <button
           type="button"
-          onClick={() => setPenalties({})}
+          onClick={() => {
+            setPenalties({});
+            prevInsideBoundaryRef.current = !isOutsideFlightBoundingBox(
+              useTelemetryStore.getState().lat,
+              useTelemetryStore.getState().lon,
+              useMissionStore.getState().flightBoundary
+            );
+          }}
           className="text-[10px]"
           style={{
             alignSelf: 'flex-start',

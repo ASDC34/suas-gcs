@@ -7,7 +7,7 @@ import {
   useMap,
 } from 'react-leaflet';
 import L from 'leaflet';
-import { useMissionStore } from '../../store/missionStore';
+import { isOutsideFlightBoundingBox, useMissionStore } from '../../store/missionStore';
 import { useTelemetryStore } from '../../store/telemetryStore';
 import { createDroneIcon, createGhostIcon, createWaypointIcon } from './mapIcons';
 import { DetectionOverlay } from './DetectionOverlay';
@@ -210,13 +210,7 @@ const FlightBoundaryLayer: React.FC = () => {
     [flightBoundary.points]
   );
 
-  const lats = flightBoundary.points.map((p) => p.lat);
-  const lons = flightBoundary.points.map((p) => p.lon);
-  const outOfBounds =
-    lat < Math.min(...lats) ||
-    lat > Math.max(...lats) ||
-    lon < Math.min(...lons) ||
-    lon > Math.max(...lons);
+  const outOfBounds = isOutsideFlightBoundingBox(lat, lon, flightBoundary);
 
   return (
     <Polygon

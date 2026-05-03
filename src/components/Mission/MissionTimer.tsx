@@ -6,6 +6,7 @@ const MISSION_DURATION_SEC = 45 * 60;
 export const MissionTimer: React.FC = () => {
   const missionPhase = useMissionStore((s) => s.missionPhase);
   const setMissionPhase = useMissionStore((s) => s.setMissionPhase);
+  const setTimerOvertimeSec = useMissionStore((s) => s.setTimerOvertimeSec);
 
   const [elapsedSec, setElapsedSec] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
@@ -38,6 +39,14 @@ export const MissionTimer: React.FC = () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [isRunning, startTime]);
+
+  useEffect(() => {
+    const overtime =
+      startTime != null && elapsedSec > MISSION_DURATION_SEC
+        ? elapsedSec - MISSION_DURATION_SEC
+        : 0;
+    setTimerOvertimeSec(overtime);
+  }, [elapsedSec, startTime, setTimerOvertimeSec]);
 
   const remainingSec = Math.max(0, MISSION_DURATION_SEC - elapsedSec);
   const isOvertime = elapsedSec > MISSION_DURATION_SEC;
