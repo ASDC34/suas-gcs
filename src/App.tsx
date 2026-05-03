@@ -228,9 +228,9 @@ export default function App() {
         <aside
           className="gcs-sidebar"
           style={{
-            width: 260,
-            minWidth: 260,
-            maxWidth: 260,
+            width: 265,
+            minWidth: 265,
+            maxWidth: 265,
             overflow: 'hidden',
             borderRight: '1px solid #1e2d40',
             display: 'flex',
@@ -242,15 +242,14 @@ export default function App() {
             alignSelf: 'stretch',
           }}
         >
-          {/* EN ÜST: durum şeridi + kamera — her zaman görünür */}
-          <div className="flex flex-col gap-2 shrink-0" style={{ minWidth: 0 }}>
+          {/* Üst blok sabit; kaydırılabilir içerik altta flex-1 ile genişler */}
+          <div className="flex flex-none flex-col gap-2 shrink-0" style={{ minWidth: 0 }}>
             <SidebarStatusStrip />
             <CameraSection />
             <CompassSection />
           </div>
           <div
-            className="gcs-sidebar-inner flex min-h-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto"
-            style={{ minWidth: 0 }}
+            className="gcs-sidebar-inner flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto"
           >
             <TelemetryReadout />
             <RFSignalBars />

@@ -18,9 +18,9 @@ export const CompassSection: React.FC = () => {
     return 'KB';
   }, [heading]);
 
-  const SIZE = 120;
+  const SIZE = 80;
   const CENTER = SIZE / 2;
-  const RADIUS = SIZE / 2 - 8;
+  const RADIUS = SIZE / 2 - 6;
 
   const headingRad = (heading - 90) * (Math.PI / 180);
   const arrowX = CENTER + RADIUS * 0.6 * Math.cos(headingRad);
@@ -38,8 +38,8 @@ export const CompassSection: React.FC = () => {
       <div
         style={{
           fontFamily: "'Barlow Condensed', sans-serif",
-          fontSize: 11,
-          letterSpacing: '0.15em',
+          fontSize: 10,
+          letterSpacing: '0.12em',
           color: '#4a6080',
           marginBottom: 6,
         }}
@@ -53,15 +53,15 @@ export const CompassSection: React.FC = () => {
 
           {(['K', 'D', 'G', 'B'] as const).map((dir, i) => {
             const angle = i * 90 * (Math.PI / 180) - Math.PI / 2;
-            const tx = CENTER + (RADIUS - 12) * Math.cos(angle);
-            const ty = CENTER + (RADIUS - 12) * Math.sin(angle);
+            const tx = CENTER + (RADIUS - 8) * Math.cos(angle);
+            const ty = CENTER + (RADIUS - 8) * Math.sin(angle);
             return (
               <text
                 key={dir}
                 x={tx}
-                y={ty + 4}
+                y={ty + 3}
                 textAnchor="middle"
-                fontSize={10}
+                fontSize={8}
                 fill={dir === 'K' ? '#ef4444' : '#4a6080'}
                 fontFamily="'Barlow Condensed', sans-serif"
                 fontWeight="700"
@@ -73,16 +73,16 @@ export const CompassSection: React.FC = () => {
 
           {Array.from({ length: 36 }, (_, i) => {
             const angle = (i * 10 - 90) * (Math.PI / 180);
-            const inner = i % 9 === 0 ? RADIUS - 18 : RADIUS - 10;
+            const inner = i % 9 === 0 ? RADIUS - 12 : RADIUS - 6;
             return (
               <line
                 key={i}
                 x1={CENTER + inner * Math.cos(angle)}
                 y1={CENTER + inner * Math.sin(angle)}
-                x2={CENTER + (RADIUS - 4) * Math.cos(angle)}
-                y2={CENTER + (RADIUS - 4) * Math.sin(angle)}
+                x2={CENTER + (RADIUS - 2) * Math.cos(angle)}
+                y2={CENTER + (RADIUS - 2) * Math.sin(angle)}
                 stroke={i % 9 === 0 ? '#2a4060' : '#1e2d40'}
-                strokeWidth={i % 9 === 0 ? 1.5 : 0.8}
+                strokeWidth={i % 9 === 0 ? 1.2 : 0.7}
               />
             );
           })}
@@ -102,9 +102,9 @@ export const CompassSection: React.FC = () => {
 
           <text
             x={CENTER}
-            y={CENTER + 22}
+            y={CENTER + 14}
             textAnchor="middle"
-            fontSize={16}
+            fontSize={13}
             fill="#f0f4f8"
             fontFamily="'Rajdhani', monospace"
             fontWeight="700"
@@ -113,9 +113,9 @@ export const CompassSection: React.FC = () => {
           </text>
           <text
             x={CENTER}
-            y={CENTER + 34}
+            y={CENTER + 24}
             textAnchor="middle"
-            fontSize={10}
+            fontSize={8}
             fill="#4a6080"
             fontFamily="'Barlow Condensed', sans-serif"
           >
@@ -141,9 +141,9 @@ export const CompassSection: React.FC = () => {
               <div
                 style={{
                   fontFamily: "'Barlow Condensed', sans-serif",
-                  fontSize: 9,
+                  fontSize: 10,
                   color: '#4a6080',
-                  letterSpacing: '0.1em',
+                  letterSpacing: '0.08em',
                 }}
               >
                 {label}
@@ -151,7 +151,7 @@ export const CompassSection: React.FC = () => {
               <div
                 style={{
                   fontFamily: "'Rajdhani', monospace",
-                  fontSize: 14,
+                  fontSize: 12,
                   fontWeight: 700,
                   color,
                   overflow: 'hidden',

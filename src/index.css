@@ -74,12 +74,13 @@ html, body, #root {
 }
 
 .gcs-sidebar > .gcs-sidebar-inner {
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  min-height: 0;
 }
 
-/* Sol panel 260px: taşan / kesilen metinleri saran + biraz küçült */
+/* Sol panel 265px: taşan / kesilen metinleri saran + biraz küçült */
 .gcs-sidebar {
-  max-width: 260px;
+  max-width: 265px;
 }
 
 .gcs-sidebar-inner .hud-panel {
