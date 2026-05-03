@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useTelemetryStore } from '../../store/telemetryStore';
 
-const STRIP_WIDTH = 72;
+const STRIP_WIDTH = 90;
 const STRIP_HEIGHT = 480;
 const MIN_ALT = 0;
 const MAX_ALT = 500;
@@ -28,6 +28,8 @@ export const AltitudeStrip: React.FC = React.memo(() => {
   const isAbove = altitudeAGL > CEILING_FT && inFlight;
   const isDanger = isBelow || isAbove;
   const displayAlt = Math.round(altitudeAGL);
+  const midY = (coords.ceilY + coords.floorY) / 2;
+  const cx = STRIP_WIDTH / 2;
 
   return (
     <div
@@ -100,15 +102,15 @@ export const AltitudeStrip: React.FC = React.memo(() => {
           strokeDasharray="4 3"
         />
         <text
-          x={STRIP_WIDTH / 2}
-          y={coords.ceilY - 5}
+          x={cx}
+          y={coords.ceilY - 4}
           textAnchor="middle"
-          fontSize={9}
+          fontSize={7}
           fill="#ef4444"
           fontFamily="'JetBrains Mono', monospace"
           fontWeight="600"
         >
-          400'
+          400&apos;
         </text>
 
         <line
@@ -121,21 +123,21 @@ export const AltitudeStrip: React.FC = React.memo(() => {
           strokeDasharray="4 3"
         />
         <text
-          x={STRIP_WIDTH / 2}
-          y={coords.floorY + 12}
+          x={cx}
+          y={coords.floorY + 11}
           textAnchor="middle"
-          fontSize={9}
+          fontSize={7}
           fill="#ef4444"
           fontFamily="'JetBrains Mono', monospace"
           fontWeight="600"
         >
-          150'
+          150&apos;
         </text>
 
         {[50, 100, 200, 250, 300, 350, 450].map((alt) => (
           <g key={alt}>
             <line
-              x1={STRIP_WIDTH - 12}
+              x1={STRIP_WIDTH - 14}
               y1={altToY(alt)}
               x2={STRIP_WIDTH}
               y2={altToY(alt)}
@@ -143,10 +145,10 @@ export const AltitudeStrip: React.FC = React.memo(() => {
               strokeWidth={1}
             />
             <text
-              x={STRIP_WIDTH - 14}
-              y={altToY(alt) + 4}
+              x={STRIP_WIDTH - 16}
+              y={altToY(alt) + 3}
               textAnchor="end"
-              fontSize={8}
+              fontSize={6}
               fill="#4a6080"
               fontFamily="'JetBrains Mono', monospace"
             >
@@ -167,27 +169,27 @@ export const AltitudeStrip: React.FC = React.memo(() => {
         <polygon
           points={`
             ${STRIP_WIDTH},${coords.currentY}
-            ${STRIP_WIDTH - 14},${coords.currentY - 7}
-            ${STRIP_WIDTH - 14},${coords.currentY + 7}
+            ${STRIP_WIDTH - 16},${coords.currentY - 7}
+            ${STRIP_WIDTH - 16},${coords.currentY + 7}
           `}
           fill={isDanger ? '#ef4444' : '#10b981'}
         />
 
         <rect
-          x={2}
-          y={coords.currentY - 12}
-          width={38}
-          height={24}
+          x={6}
+          y={coords.currentY - 11}
+          width={48}
+          height={22}
           rx={2}
           fill={isDanger ? '#7f1d1d' : '#064e3b'}
           stroke={isDanger ? '#ef4444' : '#10b981'}
           strokeWidth={1}
         />
         <text
-          x={21}
+          x={30}
           y={coords.currentY + 4}
           textAnchor="middle"
-          fontSize={12}
+          fontSize={11}
           fill={isDanger ? '#ef4444' : '#10b981'}
           fontFamily="'Rajdhani', monospace"
           fontWeight="700"
@@ -195,45 +197,60 @@ export const AltitudeStrip: React.FC = React.memo(() => {
           {displayAlt}
         </text>
 
-        {coords.ceilY > 30 && (
+        {coords.ceilY > 28 && (
           <text
-            x={STRIP_WIDTH / 2}
+            x={cx}
             y={coords.ceilY / 2}
             textAnchor="middle"
-            fontSize={9}
+            fontSize={7}
             fill="#7f1d1d"
             fontFamily="'Barlow Condensed', sans-serif"
             fontWeight="600"
-            transform={`rotate(-90, ${STRIP_WIDTH / 2}, ${coords.ceilY / 2})`}
+            transform={`rotate(-90, ${cx}, ${coords.ceilY / 2})`}
           >
             CEILING
           </text>
         )}
 
         <text
-          x={STRIP_WIDTH / 2}
-          y={(coords.ceilY + coords.floorY) / 2}
+          x={cx}
+          y={midY - 6}
           textAnchor="middle"
-          fontSize={8}
+          fontSize={6}
           fill="#10b981"
           fontFamily="'Barlow Condensed', sans-serif"
           fontWeight="600"
-          opacity={0.7}
-          transform={`rotate(-90, ${STRIP_WIDTH / 2}, ${(coords.ceilY + coords.floorY) / 2})`}
+          opacity={0.85}
+          letterSpacing="0.06em"
+          transform={`rotate(-90, ${cx}, ${midY - 6})`}
         >
-          FLIGHT WINDOW
+          FLIGHT
+        </text>
+        <text
+          x={cx}
+          y={midY + 6}
+          textAnchor="middle"
+          fontSize={6}
+          fill="#10b981"
+          fontFamily="'Barlow Condensed', sans-serif"
+          fontWeight="600"
+          opacity={0.85}
+          letterSpacing="0.06em"
+          transform={`rotate(-90, ${cx}, ${midY + 6})`}
+        >
+          WINDOW
         </text>
 
-        {STRIP_HEIGHT - coords.floorY > 30 && (
+        {STRIP_HEIGHT - coords.floorY > 28 && (
           <text
-            x={STRIP_WIDTH / 2}
+            x={cx}
             y={(coords.floorY + STRIP_HEIGHT) / 2}
             textAnchor="middle"
-            fontSize={9}
+            fontSize={7}
             fill="#7f1d1d"
             fontFamily="'Barlow Condensed', sans-serif"
             fontWeight="600"
-            transform={`rotate(-90, ${STRIP_WIDTH / 2}, ${(coords.floorY + STRIP_HEIGHT) / 2})`}
+            transform={`rotate(-90, ${cx}, ${(coords.floorY + STRIP_HEIGHT) / 2})`}
           >
             FLOOR
           </text>
@@ -251,13 +268,18 @@ export const AltitudeStrip: React.FC = React.memo(() => {
       </svg>
 
       {isDanger && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 10 }}>
+        <div
+          className="absolute inset-0 flex items-center justify-center pointer-events-none"
+          style={{ zIndex: 10 }}
+        >
           <div
-            className="text-red-500 text-xs font-bold text-center px-1 animate-pulse"
+            className="text-red-500 font-bold text-center px-1 animate-pulse"
             style={{
               fontFamily: "'Barlow Condensed', sans-serif",
               letterSpacing: '0.05em',
               whiteSpace: 'pre-line',
+              fontSize: 10,
+              lineHeight: 1.2,
             }}
           >
             {isBelow ? '⚠ BELOW\nFLOOR' : '⚠ ABOVE\nCEIL'}
@@ -269,4 +291,3 @@ export const AltitudeStrip: React.FC = React.memo(() => {
 });
 
 AltitudeStrip.displayName = 'AltitudeStrip';
-

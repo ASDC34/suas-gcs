@@ -49,7 +49,8 @@ export function useTelemetrySimulator(enabled: boolean = true) {
     lapCount: 9,
 
     orbitAngle: 0,
-    orbitRadius: 0.008,
+    orbitRadiusLat: 0.006,
+    orbitRadiusLon: 0.0075,
   });
 
   useEffect(() => {
@@ -136,12 +137,13 @@ export function useTelemetrySimulator(enabled: boolean = true) {
 
           const centerLat = 36.0544;
           const centerLon = -95.9204;
-          sim.lat = centerLat + Math.sin(angle) * 0.009;
-          sim.lon = centerLon + Math.cos(angle) * 0.018;
+          const rLat = sim.orbitRadiusLat;
+          const rLon = sim.orbitRadiusLon;
+          sim.lat = centerLat + Math.sin(angle) * rLat;
+          sim.lon = centerLon + Math.cos(angle) * rLon;
 
           sim.heading =
-            ((Math.atan2(Math.cos(angle) * 0.009, -Math.sin(angle) * 0.018) *
-              180) /
+            ((Math.atan2(Math.cos(angle) * rLon, -Math.sin(angle) * rLat) * 180) /
               Math.PI +
               360) %
             360;

@@ -77,6 +77,41 @@ html, body, #root {
   flex: 1 1 auto;
 }
 
+/* Sol panel 260px: taşan / kesilen metinleri saran + biraz küçült */
+.gcs-sidebar {
+  max-width: 260px;
+}
+
+.gcs-sidebar-inner .hud-panel {
+  padding: 8px !important;
+}
+
+.gcs-sidebar-inner .hud-number {
+  font-size: 38px !important;
+  letter-spacing: 0.01em !important;
+}
+
+.gcs-sidebar-inner .text-xs,
+.gcs-sidebar-inner [class*='text-xs'] {
+  font-size: 0.65rem !important;
+  line-height: 1.25 !important;
+  letter-spacing: 0.04em !important;
+}
+
+.gcs-sidebar-inner .tracking-widest {
+  letter-spacing: 0.08em !important;
+}
+
+.gcs-sidebar-inner .hud-panel,
+.gcs-sidebar-inner button {
+  max-width: 100%;
+}
+
+.gcs-sidebar > div:first-child {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .hud-panel::before {
   content: '';
   position: absolute;

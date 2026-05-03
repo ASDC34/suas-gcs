@@ -44,16 +44,27 @@ export type MissionPhase =
   | 'RTL'
   | 'COMPLETE';
 
-const RWY1_WAYPOINTS: Waypoint[] = [
-  { id: 'wp-1', index: 1, lat: 36.0550, lon: -95.9210, altitudeFt: 200, type: 'NORMAL', status: 'PENDING', acceptanceRadiusM: 30 },
-  { id: 'wp-2', index: 2, lat: 36.0620, lon: -95.9150, altitudeFt: 200, type: 'NORMAL', status: 'PENDING', acceptanceRadiusM: 30 },
-  { id: 'wp-3', index: 3, lat: 36.0640, lon: -95.9060, altitudeFt: 200, type: 'NORMAL', status: 'PENDING', acceptanceRadiusM: 30 },
-  { id: 'wp-4', index: 4, lat: 36.0590, lon: -95.8990, altitudeFt: 200, type: 'NORMAL', status: 'PENDING', acceptanceRadiusM: 30 },
-  { id: 'wp-5', index: 5, lat: 36.0510, lon: -95.9000, altitudeFt: 200, type: 'NORMAL', status: 'PENDING', acceptanceRadiusM: 30 },
-  { id: 'wp-6', index: 6, lat: 36.0480, lon: -95.9090, altitudeFt: 200, type: 'NORMAL', status: 'PENDING', acceptanceRadiusM: 30 },
-  { id: 'wp-7', index: 7, lat: 36.0500, lon: -95.9180, altitudeFt: 200, type: 'NORMAL', status: 'PENDING', acceptanceRadiusM: 30 },
-  { id: 'wp-8', index: 8, lat: 36.0540, lon: -95.9220, altitudeFt: 200, type: 'NORMAL', status: 'PENDING', acceptanceRadiusM: 30 },
-];
+/** Uçuş sınırı içinde oval rota — merkez pist eşiği, ~660m × ~830m elips (güvenli pay) */
+const LAP_CENTER_LAT = 36.0544;
+const LAP_CENTER_LON = -95.9204;
+const LAP_R_LAT = 0.006;
+const LAP_R_LON = 0.0075;
+
+const RWY1_WAYPOINTS: Waypoint[] = Array.from({ length: 8 }, (_, i) => {
+  const angle = (i / 8) * Math.PI * 2;
+  const lat = LAP_CENTER_LAT + LAP_R_LAT * Math.sin(angle);
+  const lon = LAP_CENTER_LON + LAP_R_LON * Math.cos(angle);
+  return {
+    id: `wp-${i + 1}`,
+    index: i + 1,
+    lat: Math.round(lat * 1e5) / 1e5,
+    lon: Math.round(lon * 1e5) / 1e5,
+    altitudeFt: 200,
+    type: 'NORMAL' as const,
+    status: 'PENDING' as const,
+    acceptanceRadiusM: 30,
+  };
+});
 
 const RWY2_WAYPOINTS: Waypoint[] = RWY1_WAYPOINTS.map((wp) => ({
   ...wp,

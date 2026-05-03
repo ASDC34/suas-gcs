@@ -265,13 +265,17 @@ export default function App() {
         </div>
 
         <aside
-          className="flex flex-col items-center gap-3 p-3 flex-shrink-0"
-          style={{ width: 100, borderLeft: '1px solid #1e2d40' }}
+          className="flex flex-col items-center gap-2 p-2 flex-shrink-0"
+          style={{ width: 106, minWidth: 106, borderLeft: '1px solid #1e2d40' }}
         >
           <AltitudeStrip />
           <div
-            className="text-xs text-hud-dim text-center"
-            style={{ fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.05em' }}
+            className="text-hud-dim text-center"
+            style={{
+              fontFamily: "'Barlow Condensed', sans-serif",
+              letterSpacing: '0.04em',
+              fontSize: 9,
+            }}
           >
             AGL ft
           </div>
