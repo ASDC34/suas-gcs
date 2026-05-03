@@ -5,7 +5,6 @@ import {
   Polyline,
   TileLayer,
   useMap,
-  useMapEvents,
 } from 'react-leaflet';
 import L from 'leaflet';
 import { useMissionStore } from '../../store/missionStore';
@@ -289,19 +288,6 @@ const MapZoomControls: React.FC = () => {
   );
 };
 
-const MapCursorCoords: React.FC = () => {
-  const [coords, setCoords] = React.useState({ lat: 0, lon: 0 });
-  useMapEvents({
-    mousemove: (e) => setCoords({ lat: e.latlng.lat, lon: e.latlng.lng }),
-  });
-
-  return (
-    <span className="text-xs hud-mono" style={{ color: '#4a6080' }}>
-      {coords.lat.toFixed(5)}°N &nbsp; {Math.abs(coords.lon).toFixed(5)}°W
-    </span>
-  );
-};
-
 const MapOverlayUI: React.FC = () => {
   const activeRunway = useMissionStore((s) => s.activeRunway);
   const setActiveRunway = useMissionStore((s) => s.setActiveRunway);
@@ -330,10 +316,6 @@ const MapOverlayUI: React.FC = () => {
 
       <div className="absolute top-3 right-3 z-50 flex flex-col gap-1" style={{ zIndex: 1000 }}>
         <MapZoomControls />
-      </div>
-
-      <div className="absolute bottom-3 left-3 z-50 hud-panel px-2 py-1" style={{ zIndex: 1000 }}>
-        <MapCursorCoords />
       </div>
     </>
   );
@@ -364,7 +346,7 @@ export const MissionMap: React.FC = () => {
         <DetectionLayer />
         <DroneLayer />
 
-        {/* MapContainer context'inde olmalı (useMap/useMapEvents) */}
+        {/* MapContainer context'inde olmalı (useMap) */}
         <MapOverlayUI />
       </MapContainer>
     </div>
