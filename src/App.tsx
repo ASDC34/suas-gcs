@@ -7,7 +7,6 @@ import { RTLButton } from './components/Controls/RTLButton';
 import { AltitudeStrip } from './components/HUD/AltitudeStrip';
 import { RFSignalBars } from './components/HUD/RFSignalBars';
 import { TelemetryReadout } from './components/HUD/TelemetryReadout';
-import { HeartbeatLight } from './components/Interop/HeartbeatLight';
 import { MissionMap } from './components/Map/MissionMap';
 import { WaypointEditorPanel } from './components/Map/WaypointEditorPanel';
 import { LapCounter } from './components/Mission/LapCounter';
@@ -128,24 +127,27 @@ export default function App() {
           background: 'linear-gradient(to right, #0d1321, #070b14)',
         }}
       >
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <div
-            style={{
-              fontFamily: "'Orbitron', monospace",
-              color: '#3b82f6',
-              fontSize: 18,
-              fontWeight: 700,
-              letterSpacing: '0.1em',
-            }}
-          >
-            V-TECH
+        <div className="flex flex-col gap-1 flex-shrink-0" style={{ minWidth: 0 }}>
+          <div className="flex items-center gap-3">
+            <div
+              style={{
+                fontFamily: "'Orbitron', monospace",
+                color: '#3b82f6',
+                fontSize: 18,
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+              }}
+            >
+              V-TECH
+            </div>
+            <div
+              className="text-hud-dim text-xs"
+              style={{ fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.05em' }}
+            >
+              GCS · SUAS 2026 · Skyway Range, Tulsa OK
+            </div>
           </div>
-          <div
-            className="text-hud-dim text-xs"
-            style={{ fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.05em' }}
-          >
-            GCS · SUAS 2026 · Skyway Range, Tulsa OK
-          </div>
+          <FlightModeBadge />
         </div>
 
         <div className="flex flex-1 items-center justify-center min-w-0">
@@ -175,10 +177,6 @@ export default function App() {
               </button>
             ))}
           </div>
-        </div>
-
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <FlightModeBadge />
         </div>
 
         <div className="flex items-center gap-3 flex-shrink-0">
@@ -213,25 +211,34 @@ export default function App() {
 
       <main className="flex flex-1 overflow-hidden" style={{ minHeight: 0 }}>
         <aside
-          className="gcs-sidebar flex flex-shrink-0 flex-col min-h-0 min-w-[260px] max-w-[260px]"
-          style={{ width: 260, borderRight: '1px solid #1e2d40' }}
+          style={{
+            width: 260,
+            minWidth: 260,
+            maxWidth: 260,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            borderRight: '1px solid #1e2d40',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            padding: 8,
+            flexShrink: 0,
+            minHeight: 0,
+          }}
         >
-          <div className="gcs-sidebar-inner flex min-h-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto px-3 py-3">
-            <CameraSection />
-            <CompassSection />
-            <TelemetryReadout />
-            <RFSignalBars />
-            <PreflightChecklist />
-            <MissionFlowPanel />
-            <PenaltyTracker />
-            <MissionControlPanel />
-            <HeartbeatLight />
-            <MissionTimer />
-            <LapCounter />
-            <ScoringPanel />
-            <DropCalculatorPanel />
-            <ConnectionManagerPanel resetSimulation={resetSimulation} />
-          </div>
+          <CameraSection />
+          <CompassSection />
+          <TelemetryReadout />
+          <RFSignalBars />
+          <MissionTimer />
+          <LapCounter />
+          <ScoringPanel />
+          <DropCalculatorPanel />
+          <PreflightChecklist />
+          <MissionFlowPanel />
+          <MissionControlPanel />
+          <PenaltyTracker />
+          <ConnectionManagerPanel resetSimulation={resetSimulation} />
         </aside>
 
         <div className="flex flex-1 flex-col min-h-0 p-0 relative overflow-hidden">

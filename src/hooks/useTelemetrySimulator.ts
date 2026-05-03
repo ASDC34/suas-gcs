@@ -166,6 +166,10 @@ export function useTelemetrySimulator(enabled: boolean = true) {
             airspeedMs: sim.groundSpeedMs + 1.5,
             heading: sim.heading,
             climbRate: Math.sin(phaseElapsed * 0.2) * 0.5,
+            windSpeedMs: 5 + Math.sin(phaseElapsed * 0.05) * 3,
+            windDirectionDeg:
+              ((270 + Math.sin(phaseElapsed * 0.02) * 30) % 360 + 360) % 360,
+            windSource: 'ESTIMATED',
             batteryPercent: sim.batteryPercent,
             batteryVoltage: sim.batteryVoltage,
             batteryCurrent: 85 + Math.random() * 10,

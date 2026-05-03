@@ -1,18 +1,18 @@
-import React, { useMemo, useState } from 'react';
-import { useMissionStore } from '../../store/missionStore';
+import React, { useMemo } from 'react';
 import { useTelemetryStore } from '../../store/telemetryStore';
+import { useMissionStore } from '../../store/missionStore';
 import { calculateDropPoint } from '../../utils/ballisticDrop';
 
 export const DropCalculatorPanel: React.FC = () => {
   const altitudeAGL = useTelemetryStore((s) => s.altitudeAGL);
   const airspeedMs = useTelemetryStore((s) => s.airspeedMs);
   const headingDeg = useTelemetryStore((s) => s.heading);
+  const windSpeedMs = useTelemetryStore((s) => s.windSpeedMs);
+  const windDirectionDeg = useTelemetryStore((s) => s.windDirectionDeg);
+  const windSource = useTelemetryStore((s) => s.windSource);
 
   const tentLocation = useMissionStore((s) => s.detectedTentLocation);
   const mannequinLocation = useMissionStore((s) => s.detectedMannequinLocation);
-
-  const [windSpeedMs, setWindSpeedMs] = useState(6.3);
-  const [windDirectionDeg, setWindDirectionDeg] = useState(270);
 
   const bay1Result = useMemo(() => {
     if (!tentLocation) return null;
@@ -40,19 +40,18 @@ export const DropCalculatorPanel: React.FC = () => {
     });
   }, [mannequinLocation, altitudeAGL, windSpeedMs, windDirectionDeg, airspeedMs, headingDeg]);
 
-  const dirLabel =
-    windDirectionDeg === 270
-      ? 'Batı'
-      : windDirectionDeg === 0
-        ? 'Kuzey'
-        : windDirectionDeg === 90
-          ? 'Doğu'
-          : windDirectionDeg === 180
-            ? 'Güney'
-            : '?';
+  const sourceColor =
+    windSource === 'SENSOR' ? '#10b981' : windSource === 'ESTIMATED' ? '#f59e0b' : '#4a6080';
+
+  const sourceLabel =
+    windSource === 'SENSOR'
+      ? 'ASPD-4525 SENSÖR'
+      : windSource === 'ESTIMATED'
+        ? 'SİMÜLATÖR TAHMİN'
+        : 'MANUEL';
 
   return (
-    <div className="hud-panel p-3 flex flex-col gap-2">
+    <div className="hud-panel p-3 flex flex-col gap-2" style={{ minWidth: 0 }}>
       <div
         style={{
           fontFamily: "'Barlow Condensed', sans-serif",
@@ -64,31 +63,88 @@ export const DropCalculatorPanel: React.FC = () => {
         BALİSTİK HESAPLAYICI
       </div>
 
-      <div className="flex flex-col gap-1">
-        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, color: '#4a6080' }}>
-          Rüzgar Hızı: {windSpeedMs.toFixed(1)} m/s ({(windSpeedMs * 2.237).toFixed(1)} mph)
+      <div
+        style={{
+          padding: '6px 8px',
+          backgroundColor: '#070b14',
+          border: `1px solid ${sourceColor}40`,
+          borderRadius: 3,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 4,
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "'Barlow Condensed', sans-serif",
+              fontSize: 10,
+              color: sourceColor,
+              letterSpacing: '0.1em',
+            }}
+          >
+            RÜZGAR — {sourceLabel}
+          </span>
+          <div
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              backgroundColor: sourceColor,
+              boxShadow: `0 0 4px ${sourceColor}`,
+            }}
+          />
         </div>
-        <input
-          type="range"
-          min={0}
-          max={15}
-          step={0.1}
-          value={windSpeedMs}
-          onChange={(e) => setWindSpeedMs(Number(e.target.value))}
-          style={{ accentColor: '#3b82f6' }}
-        />
-
-        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, color: '#4a6080' }}>
-          Rüzgar Yönü: {windDirectionDeg}° ({dirLabel})
+        <div style={{ display: 'flex', gap: 16 }}>
+          <div>
+            <div
+              style={{
+                fontFamily: "'Rajdhani', monospace",
+                fontSize: 20,
+                fontWeight: 700,
+                color: '#f0f4f8',
+                lineHeight: 1,
+              }}
+            >
+              {windSpeedMs.toFixed(1)}
+            </div>
+            <div
+              style={{
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontSize: 10,
+                color: '#4a6080',
+              }}
+            >
+              m/s ({(windSpeedMs * 2.237).toFixed(1)} mph)
+            </div>
+          </div>
+          <div>
+            <div
+              style={{
+                fontFamily: "'Rajdhani', monospace",
+                fontSize: 20,
+                fontWeight: 700,
+                color: '#f0f4f8',
+                lineHeight: 1,
+              }}
+            >
+              {Math.round(windDirectionDeg)}°
+            </div>
+            <div
+              style={{
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontSize: 10,
+                color: '#4a6080',
+              }}
+            >
+              yön
+            </div>
+          </div>
         </div>
-        <input
-          type="range"
-          min={0}
-          max={359}
-          value={windDirectionDeg}
-          onChange={(e) => setWindDirectionDeg(Number(e.target.value))}
-          style={{ accentColor: '#f59e0b' }}
-        />
       </div>
 
       <div
@@ -99,11 +155,25 @@ export const DropCalculatorPanel: React.FC = () => {
           borderRadius: 3,
         }}
       >
-        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, color: '#3b82f6', marginBottom: 4 }}>
+        <div
+          style={{
+            fontFamily: "'Barlow Condensed', sans-serif",
+            fontSize: 11,
+            color: '#3b82f6',
+            marginBottom: 4,
+          }}
+        >
           BAY 1 — Beacon → Çadır
         </div>
         {bay1Result ? (
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: '#8ba3be', lineHeight: 1.6 }}>
+          <div
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 10,
+              color: '#8ba3be',
+              lineHeight: 1.6,
+            }}
+          >
             <div>Düşüş: {bay1Result.fallTimeSec.toFixed(1)}s</div>
             <div>Drift: {bay1Result.totalDriftM.toFixed(1)}m</div>
             <div>±{bay1Result.confidenceRadiusM.toFixed(1)}m güven</div>
@@ -112,7 +182,13 @@ export const DropCalculatorPanel: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, color: '#4a6080' }}>
+          <div
+            style={{
+              fontFamily: "'Barlow Condensed', sans-serif",
+              fontSize: 11,
+              color: '#4a6080',
+            }}
+          >
             Çadır hedefi tespit bekleniyor...
           </div>
         )}
@@ -126,11 +202,25 @@ export const DropCalculatorPanel: React.FC = () => {
           borderRadius: 3,
         }}
       >
-        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, color: '#a78bfa', marginBottom: 4 }}>
+        <div
+          style={{
+            fontFamily: "'Barlow Condensed', sans-serif",
+            fontSize: 11,
+            color: '#a78bfa',
+            marginBottom: 4,
+          }}
+        >
           BAY 2 — Şişe → Manken
         </div>
         {bay2Result ? (
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: '#8ba3be', lineHeight: 1.6 }}>
+          <div
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 10,
+              color: '#8ba3be',
+              lineHeight: 1.6,
+            }}
+          >
             <div>Düşüş: {bay2Result.fallTimeSec.toFixed(1)}s</div>
             <div>Drift: {bay2Result.totalDriftM.toFixed(1)}m</div>
             <div>±{bay2Result.confidenceRadiusM.toFixed(1)}m güven</div>
@@ -139,16 +229,28 @@ export const DropCalculatorPanel: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, color: '#4a6080' }}>
+          <div
+            style={{
+              fontFamily: "'Barlow Condensed', sans-serif",
+              fontSize: 11,
+              color: '#4a6080',
+            }}
+          >
             Manken hedefi tespit bekleniyor...
           </div>
         )}
       </div>
 
-      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, color: '#4a6080', textAlign: 'center' }}>
-        Mevcut irtifa: {Math.round(altitudeAGL)}ft AGL (min 150ft — Rule 3.0.4)
+      <div
+        style={{
+          fontFamily: "'Barlow Condensed', sans-serif",
+          fontSize: 10,
+          color: '#4a6080',
+          textAlign: 'center',
+        }}
+      >
+        {Math.round(altitudeAGL)}ft AGL · min 150ft (Rule 3.0.4)
       </div>
     </div>
   );
 };
-

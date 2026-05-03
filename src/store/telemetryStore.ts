@@ -12,6 +12,8 @@ export type BatteryAlert = 'NONE' | 'WARN' | 'CRITICAL' | 'EMERGENCY';
 
 export type GpsFixType = 'NO_FIX' | 'FIX_2D' | 'FIX_3D' | 'RTK_FLOAT' | 'RTK_FIXED';
 
+export type WindSource = 'SENSOR' | 'ESTIMATED' | 'MANUAL';
+
 export interface TelemetryState {
   lat: number;
   lon: number;
@@ -23,6 +25,10 @@ export interface TelemetryState {
   airspeedMs: number;
   heading: number;
   climbRate: number;
+
+  windSpeedMs: number;
+  windDirectionDeg: number;
+  windSource: WindSource;
 
   batteryPercent: number;
   batteryVoltage: number;
@@ -79,6 +85,10 @@ const initialState: Omit<
   airspeedMs: 0,
   heading: 0,
   climbRate: 0,
+
+  windSpeedMs: 6.3,
+  windDirectionDeg: 270,
+  windSource: 'MANUAL',
 
   batteryPercent: 100,
   batteryVoltage: 50.4,

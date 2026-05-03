@@ -227,6 +227,31 @@ export function applyMavlinkJsonToTelemetry(
       });
       break;
     }
+    case 'WIND': {
+      const speedRaw = Number(m.speed ?? m.windspeed ?? 0);
+      const dirRaw = Number(m.direction ?? m.direction_deg ?? 270);
+      const windSpeedMs = speedRaw > 100 ? speedRaw / 100 : speedRaw;
+      const windDirectionDeg =
+        dirRaw > 360 ? (dirRaw / 100) % 360 : ((dirRaw % 360) + 360) % 360;
+      updateTelemetry({
+        windSpeedMs,
+        windDirectionDeg,
+        windSource: 'SENSOR',
+      });
+      break;
+    }
+    case 'WIND_COV': {
+      const wx = Number(m.wind_x ?? 0);
+      const wy = Number(m.wind_y ?? 0);
+      const windSpeed = Math.sqrt(wx ** 2 + wy ** 2);
+      const windDir = ((Math.atan2(wx, wy) * 180) / Math.PI + 360) % 360;
+      updateTelemetry({
+        windSpeedMs: windSpeed,
+        windDirectionDeg: windDir,
+        windSource: 'SENSOR',
+      });
+      break;
+    }
     case 'RADIO_STATUS': {
       const rssi = typeof m.rssi !== 'undefined' ? Number(m.rssi) : undefined;
       const noise = typeof m.noise !== 'undefined' ? Number(m.noise) : undefined;
