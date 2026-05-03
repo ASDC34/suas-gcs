@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useMissionStore } from '../../store/missionStore';
+import { usePenaltySyncStore } from '../../store/penaltySyncStore';
 
 const MISSION_DURATION_SEC = 45 * 60;
 
 export const MissionTimer: React.FC = () => {
   const missionPhase = useMissionStore((s) => s.missionPhase);
   const setMissionPhase = useMissionStore((s) => s.setMissionPhase);
-  const setTimerOvertimeSec = useMissionStore((s) => s.setTimerOvertimeSec);
+  const setMissionTimerOvertimeSec = usePenaltySyncStore((s) => s.setMissionTimerOvertimeSec);
 
   const [elapsedSec, setElapsedSec] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
@@ -45,8 +46,8 @@ export const MissionTimer: React.FC = () => {
       startTime != null && elapsedSec > MISSION_DURATION_SEC
         ? elapsedSec - MISSION_DURATION_SEC
         : 0;
-    setTimerOvertimeSec(overtime);
-  }, [elapsedSec, startTime, setTimerOvertimeSec]);
+    setMissionTimerOvertimeSec(overtime);
+  }, [elapsedSec, startTime, setMissionTimerOvertimeSec]);
 
   const remainingSec = Math.max(0, MISSION_DURATION_SEC - elapsedSec);
   const isOvertime = elapsedSec > MISSION_DURATION_SEC;

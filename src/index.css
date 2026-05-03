@@ -52,12 +52,19 @@ html, body, #root {
 
 /* Sol GCS kolonunda başlıklarının kesilmemesi için (geniş içerik saran alana taşır, dikey kaydırma aside içinde) */
 .gcs-sidebar-inner .hud-panel {
-  overflow: visible;
+  overflow-x: hidden;
+  overflow-y: visible;
   min-width: 0;
+  flex-shrink: 0;
 }
 
 .gcs-sidebar-inner {
   min-width: 0;
+}
+
+/* Dikey kaydırma: çocuklar küçülmesin, taşan içerik kaydırılsın */
+.gcs-sidebar-inner > * {
+  flex-shrink: 0;
 }
 
 .gcs-sidebar-inner .hud-panel,

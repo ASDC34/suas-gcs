@@ -153,11 +153,7 @@ interface MissionStoreState {
   detectedTentLocation: LatLon | null;
   detectedMannequinLocation: LatLon | null;
 
-  /** MissionTimer 45 dk aşımı → PenaltyTracker ile senkron (sn). */
-  timerOvertimeSec: number;
-
   setActiveRunway: (rwy: 'RWY1' | 'RWY2') => void;
-  setTimerOvertimeSec: (sec: number) => void;
   updateWaypoint: (id: string, changes: Partial<Waypoint>) => void;
   setWaypointStatus: (id: string, status: Waypoint['status']) => void;
   selectWaypoint: (id: string | null) => void;
@@ -200,10 +196,7 @@ export const useMissionStore = create<MissionStoreState>((set) => ({
   detectedTentLocation: null,
   detectedMannequinLocation: null,
 
-  timerOvertimeSec: 0,
-
   setActiveRunway: (rwy) => set({ activeRunway: rwy }),
-  setTimerOvertimeSec: (sec) => set({ timerOvertimeSec: Math.max(0, Math.floor(sec)) }),
 
   updateWaypoint: (id, changes) =>
     set((state) => {

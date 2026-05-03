@@ -231,19 +231,16 @@ export default function App() {
 
       <main className="flex flex-1 overflow-hidden" style={{ minHeight: 0 }}>
         <aside
-          className="gcs-sidebar"
+          className="gcs-sidebar flex min-h-0 min-w-0 flex-col"
           style={{
             width: 265,
             minWidth: 265,
             maxWidth: 265,
             overflow: 'hidden',
             borderRight: '1px solid #1e2d40',
-            display: 'flex',
-            flexDirection: 'column',
             gap: 8,
             padding: 8,
             flexShrink: 0,
-            minHeight: 0,
             alignSelf: 'stretch',
           }}
         >
@@ -254,7 +251,8 @@ export default function App() {
             <CompassSection />
           </div>
           <div
-            className="gcs-sidebar-inner flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto"
+            className="gcs-sidebar-inner flex min-h-0 min-w-0 flex-1 flex-col basis-0 gap-2 overflow-x-hidden overflow-y-auto"
+            style={{ flex: '1 1 0%', minHeight: 0, WebkitOverflowScrolling: 'touch' }}
           >
             <TelemetryReadout />
             <RFSignalBars />
