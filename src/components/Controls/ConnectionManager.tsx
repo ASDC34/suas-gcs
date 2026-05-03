@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
 import type { Protocol } from '../../connect/connectionTypes';
-import { useConnectionManager } from '../../hooks/useConnectionManager';
+import type { ConnectionManagerApi } from '../../hooks/useConnectionManager';
 import { HeartbeatLight } from '../Interop/HeartbeatLight';
 import { useConnectionStore } from '../../store/connectionStore';
 
 interface ConnectionManagerPanelProps {
   resetSimulation?: () => void;
+  connection: ConnectionManagerApi;
 }
 
 export const ConnectionManagerPanel: React.FC<ConnectionManagerPanelProps> = ({
   resetSimulation,
+  connection,
 }) => {
   const config = useConnectionStore((s) => s.config);
   const patchConfig = useConnectionStore((s) => s.patchConfig);
-  const { status, messageLog, connect, disconnect, sendCommand } = useConnectionManager(config);
+  const { status, messageLog, connect, disconnect, sendCommand } = connection;
 
   const [showLog, setShowLog] = useState(false);
   const [manualCmd, setManualCmd] = useState('');
@@ -51,6 +53,7 @@ export const ConnectionManagerPanel: React.FC<ConnectionManagerPanelProps> = ({
 
   return (
     <div
+      id="gcs-connection-panel"
       style={{
         backgroundColor: '#0d1321',
         border: '1px solid #1e2d40',

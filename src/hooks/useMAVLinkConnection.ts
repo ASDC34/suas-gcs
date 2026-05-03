@@ -275,3 +275,11 @@ export function applyMavlinkJsonToTelemetry(
       break;
   }
 }
+
+/** WebSocket’ten gelen JSON tek satır — store güncellemesi (MAVLink köprüsü). */
+export function handleMAVLinkMessage(
+  updateTelemetry: TelemetryUpdate,
+  parsed: Record<string, unknown>
+) {
+  applyMavlinkJsonToTelemetry(updateTelemetry, parsed);
+}

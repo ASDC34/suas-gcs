@@ -40,8 +40,8 @@ const envMavrosUrl =
 
 export const DEFAULT_CONNECTION_CONFIG: ConnectionConfig = {
   protocol: 'SIMULATOR',
-  mavlinkUrl: envMavlinkUrl || 'ws://192.168.1.100:14551',
-  mavrosUrl: envMavrosUrl || 'ws://192.168.1.101:9090',
+  mavlinkUrl: envMavlinkUrl || 'ws://localhost:14551',
+  mavrosUrl: envMavrosUrl || 'ws://127.0.0.1:9090',
   autoReconnect: true,
   reconnectInterval: 3000,
 };

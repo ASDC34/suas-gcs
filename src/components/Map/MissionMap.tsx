@@ -293,11 +293,12 @@ export const MissionMap: React.FC = () => {
   const centerLon = -95.9204;
 
   return (
-    <div className="relative w-full h-full" style={{ minHeight: 400 }}>
+    <div className="relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col" style={{ flex: '1 1 0%' }}>
       <MapContainer
         center={[centerLat, centerLon]}
         zoom={14}
-        style={{ width: '100%', height: '100%' }}
+        className="min-h-0 flex-1"
+        style={{ width: '100%', height: '100%', flex: '1 1 0%', minHeight: 0 }}
         zoomControl={false}
         attributionControl={true}
       >

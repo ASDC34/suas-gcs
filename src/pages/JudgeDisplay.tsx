@@ -3,6 +3,7 @@ import { MapContainer, Polygon, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useMissionStore } from '../store/missionStore';
 import { useTelemetryStore } from '../store/telemetryStore';
+import { useConnectionManager } from '../hooks/useConnectionManager';
 import { useTelemetrySimulator } from '../hooks/useTelemetrySimulator';
 import { createDroneIcon } from '../components/Map/mapIcons';
 import { ConnectionManagerPanel } from '../components/Controls/ConnectionManager';
@@ -178,8 +179,13 @@ const JudgeTelemetryOnly: React.FC = () => {
 /** Hakim görünümü — TAM / HARİTA / TELEMETRİ modları (Rule 3.0.6). */
 export default function JudgeDisplay() {
   const [mode, setMode] = useState<JudgeDisplayMode>('FULL');
-  const protocol = useConnectionStore((s) => s.config.protocol);
-  const { resetSimulation } = useTelemetrySimulator(protocol === 'SIMULATOR');
+  const config = useConnectionStore((s) => s.config);
+  const protocol = config.protocol;
+  const liveLinkActive = useConnectionStore((s) => s.liveLinkActive);
+  const connection = useConnectionManager(config);
+  const { resetSimulation } = useTelemetrySimulator(
+    protocol === 'SIMULATOR' && !liveLinkActive
+  );
 
   const modeButtons: { id: JudgeDisplayMode; label: string }[] = [
     { id: 'FULL', label: 'TAM' },
@@ -253,7 +259,7 @@ export default function JudgeDisplay() {
       {mode === 'FULL' && (
         <>
           <div className="pointer-events-auto absolute bottom-3 left-3 z-[1002] w-[278px] max-w-[calc(100vw-1.5rem)]">
-            <ConnectionManagerPanel resetSimulation={resetSimulation} />
+            <ConnectionManagerPanel resetSimulation={resetSimulation} connection={connection} />
           </div>
           <footer
             className="pointer-events-none absolute bottom-3 right-3 z-[1002] max-w-[min(50%,260px)] text-right text-[10px] leading-snug text-hud-dim"

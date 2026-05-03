@@ -80,14 +80,16 @@ html, body, #root {
   min-width: 0;
 }
 
-.gcs-sidebar > .gcs-sidebar-inner {
-  flex: 1 1 0;
+/* Eski yapı: aside > .gcs-sidebar-inner. Yeni yapıda sınıflar aside üzerinde birleşebilir. */
+.gcs-sidebar > .gcs-sidebar-inner,
+aside.gcs-sidebar.gcs-sidebar-inner {
+  flex: 0 1 auto;
   min-height: 0;
 }
 
-/* Sol panel 265px: taşan / kesilen metinleri saran + biraz küçült */
+/* Sol panel genişliği App.tsx içinde clamp ile verilir */
 .gcs-sidebar {
-  max-width: 265px;
+  max-width: min(340px, 32vw);
 }
 
 .gcs-sidebar-inner .hud-panel {

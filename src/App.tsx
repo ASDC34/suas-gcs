@@ -15,10 +15,12 @@ import { MissionTimer } from './components/Mission/MissionTimer';
 import { PenaltyTracker } from './components/Mission/PenaltyTracker';
 import { PreflightChecklist } from './components/Mission/PreflightChecklist';
 import { ScoringPanel } from './components/Mission/ScoringPanel';
+import { ConnectionHeaderDropdown } from './components/Controls/ConnectionHeaderDropdown';
 import { ConnectionManagerPanel } from './components/Controls/ConnectionManager';
 import { DropCalculatorPanel } from './components/Payload/DropCalculatorPanel';
 import { ParameterPanel } from './components/Parameters/ParameterPanel';
 import { useAudioAlerts } from './hooks/useAudioAlerts';
+import { useConnectionManager } from './hooks/useConnectionManager';
 import { useTelemetrySimulator } from './hooks/useTelemetrySimulator';
 import { useConnectionStore } from './store/connectionStore';
 import { useControlStore } from './store/controlStore';
@@ -101,8 +103,13 @@ type MainTab = 'MAP' | 'PARAMS';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<MainTab>('MAP');
-  const protocol = useConnectionStore((s) => s.config.protocol);
-  const { resetSimulation } = useTelemetrySimulator(protocol === 'SIMULATOR');
+  const config = useConnectionStore((s) => s.config);
+  const protocol = config.protocol;
+  const liveLinkActive = useConnectionStore((s) => s.liveLinkActive);
+  const connection = useConnectionManager(config);
+  const { resetSimulation } = useTelemetrySimulator(
+    protocol === 'SIMULATOR' && !liveLinkActive
+  );
   useAudioAlerts(true);
 
   useEffect(() => {
@@ -132,7 +139,7 @@ export default function App() {
       <IntentOverlay />
 
       <header
-        className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 flex-shrink-0"
+        className="relative z-[60] flex flex-shrink-0 flex-wrap items-center gap-x-3 gap-y-2 overflow-visible px-3 py-2"
         style={{
           borderBottom: '1px solid #1e2d40',
           background: 'linear-gradient(to right, #0d1321, #070b14)',
@@ -191,9 +198,10 @@ export default function App() {
         </div>
 
         <div
-          className="flex flex-wrap items-center justify-end gap-2 flex-shrink-0 ml-auto"
+          className="ml-auto flex min-w-0 flex-shrink-0 flex-wrap items-center justify-end gap-2"
           style={{ minWidth: 0 }}
         >
+          <ConnectionHeaderDropdown connection={connection} />
           <button
             type="button"
             onClick={() => {
@@ -229,31 +237,22 @@ export default function App() {
         </div>
       </header>
 
-      <main className="flex flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+      <main className="flex min-h-0 flex-1 overflow-hidden" style={{ minHeight: 0 }}>
         <aside
-          className="gcs-sidebar flex min-h-0 min-w-0 flex-col"
+          className="gcs-sidebar gcs-sidebar-inner flex min-h-0 min-w-0 flex-shrink-0 flex-col gap-2 overflow-x-hidden overflow-y-auto"
           style={{
-            width: 265,
-            minWidth: 265,
-            maxWidth: 265,
-            overflow: 'hidden',
+            width: 'clamp(200px, 24vw, 300px)',
+            minWidth: 200,
+            WebkitOverflowScrolling: 'touch',
             borderRight: '1px solid #1e2d40',
-            gap: 8,
             padding: 8,
-            flexShrink: 0,
             alignSelf: 'stretch',
           }}
         >
-          {/* Üst blok sabit; kaydırılabilir içerik altta flex-1 ile genişler */}
-          <div className="flex flex-none flex-col gap-2 shrink-0" style={{ minWidth: 0 }}>
+          <div className="flex min-w-0 flex-col gap-2" style={{ minWidth: 0 }}>
             <SidebarStatusStrip />
             <CameraSection />
             <CompassSection />
-          </div>
-          <div
-            className="gcs-sidebar-inner flex min-h-0 min-w-0 flex-1 flex-col basis-0 gap-2 overflow-x-hidden overflow-y-auto"
-            style={{ flex: '1 1 0%', minHeight: 0, WebkitOverflowScrolling: 'touch' }}
-          >
             <TelemetryReadout />
             <RFSignalBars />
             <MissionTimer />
@@ -264,23 +263,36 @@ export default function App() {
             <MissionFlowPanel />
             <MissionControlPanel />
             <PenaltyTracker />
-            <ConnectionManagerPanel resetSimulation={resetSimulation} />
+            <ConnectionManagerPanel
+              resetSimulation={resetSimulation}
+              connection={connection}
+            />
           </div>
         </aside>
 
-        <div className="flex flex-1 flex-col min-h-0 p-0 relative overflow-hidden">
-          <div className="flex min-h-0 min-w-0 flex-1 flex-row">
+        <div
+          className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-0"
+          style={{ flex: '1 1 0%', minWidth: 0 }}
+        >
+          <div className="flex min-h-0 min-w-0 flex-1 flex-row" style={{ flex: '1 1 0%' }}>
             {activeTab === 'PARAMS' && (
               <div
                 className="flex min-h-0 flex-shrink-0 flex-col overflow-hidden border-r border-[#1e2d40] bg-[#070b14]"
-                style={{ width: 360, minWidth: 360, maxWidth: 360 }}
+                style={{
+                  width: 'clamp(280px, 28vw, 400px)',
+                  minWidth: 260,
+                  flexShrink: 0,
+                }}
               >
-                <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-3">
+                <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-3">
                   <ParameterPanel />
                 </div>
               </div>
             )}
-            <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
+            <div
+              className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+              style={{ flex: '1 1 0%', minWidth: 0 }}
+            >
               <MissionMap />
               <WaypointEditorPanel />
             </div>
@@ -288,8 +300,13 @@ export default function App() {
         </div>
 
         <aside
-          className="flex flex-col items-center gap-2 p-2 flex-shrink-0"
-          style={{ width: 110, minWidth: 110, maxWidth: 110, borderLeft: '1px solid #1e2d40' }}
+          className="flex flex-shrink-0 flex-col items-center gap-2 p-2"
+          style={{
+            width: 'clamp(88px, 8vw, 120px)',
+            minWidth: 88,
+            flexShrink: 0,
+            borderLeft: '1px solid #1e2d40',
+          }}
         >
           <AltitudeStrip />
           <div

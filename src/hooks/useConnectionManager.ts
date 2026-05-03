@@ -6,11 +6,21 @@ import type {
   MAVLinkMessage,
 } from '../connect/connectionTypes';
 import type { FlightMode } from '../store/telemetryStore';
+import { useConnectionStore } from '../store/connectionStore';
 import { useTelemetryStore } from '../store/telemetryStore';
-import { applyMavlinkJsonToTelemetry } from './useMAVLinkConnection';
+import { MavlinkWsBinaryAccumulator } from '../utils/mavlinkBinaryWs';
+import { handleMAVLinkMessage } from './useMAVLinkConnection';
 
 export type { Protocol, ConnectionConfig, ConnectionStatus, MAVLinkMessage } from '../connect/connectionTypes';
 export { DEFAULT_CONNECTION_CONFIG } from '../connect/connectionTypes';
+
+export interface ConnectionManagerApi {
+  status: ConnectionStatus;
+  messageLog: MAVLinkMessage[];
+  connect: () => void;
+  disconnect: () => void;
+  sendCommand: (command: object) => boolean;
+}
 
 function handleMAVROSMessage(
   msg: Record<string, unknown>,
@@ -140,7 +150,9 @@ export function useConnectionManager(config: ConnectionConfig) {
   const pingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pingStartRef = useRef<number>(0);
   const msgCounterRef = useRef(0);
-  const manualCloseRef = useRef(false);
+  /** Kullanıcı KES dediğinde düz WebSocket yeniden bağlanmasın */
+  const allowReconnectRef = useRef(true);
+  const mavlinkAccRef = useRef(new MavlinkWsBinaryAccumulator());
 
   const addToLog = useCallback((entry: MAVLinkMessage) => {
     setMessageLog((prev) => [entry, ...prev].slice(0, 100));
@@ -159,12 +171,11 @@ export function useConnectionManager(config: ConnectionConfig) {
   const teardownSocketOnly = useCallback(() => {
     stopPing();
     clearReconnectTimer();
+    mavlinkAccRef.current.reset();
     if (wsRef.current) {
       try {
-        manualCloseRef.current = true;
         wsRef.current.close(1000, 'teardown');
       } finally {
-        manualCloseRef.current = false;
         wsRef.current = null;
       }
     }
@@ -172,7 +183,9 @@ export function useConnectionManager(config: ConnectionConfig) {
   }, [clearReconnectTimer, stopPing]);
 
   const disconnect = useCallback(() => {
+    allowReconnectRef.current = false;
     teardownSocketOnly();
+    useConnectionStore.getState().setLiveLinkActive(false);
     setStatus((s) => ({
       ...s,
       connected: false,
@@ -186,7 +199,9 @@ export function useConnectionManager(config: ConnectionConfig) {
     const cfg = configRef.current;
     if (cfg.protocol === 'SIMULATOR') return;
 
+    allowReconnectRef.current = true;
     teardownSocketOnly();
+    mavlinkAccRef.current.reset();
 
     const url = cfg.protocol === 'MAVLINK' ? cfg.mavlinkUrl : cfg.mavrosUrl;
     setStatus((s) => ({
@@ -202,8 +217,9 @@ export function useConnectionManager(config: ConnectionConfig) {
 
       const ws = cfg.autoReconnect
         ? new ReconnectingWebSocket(url, [], {
+            minReconnectionDelay: cfg.reconnectInterval,
             maxReconnectionDelay: cfg.reconnectInterval,
-            minReconnectionDelay: 500,
+            reconnectionDelayGrowFactor: 1,
           })
         : new WebSocket(url);
 
@@ -221,6 +237,9 @@ export function useConnectionManager(config: ConnectionConfig) {
           protocol: cfg.protocol,
         }));
         updateTelemetry({ telemetryConnected: true, rcConnected: true });
+        if (cfg.protocol === 'MAVLINK' || cfg.protocol === 'MAVROS') {
+          useConnectionStore.getState().setLiveLinkActive(true);
+        }
 
         stopPing();
 
@@ -262,32 +281,23 @@ export function useConnectionManager(config: ConnectionConfig) {
         }
       };
 
-      ws.onmessage = (event: MessageEvent<string | Blob>) => {
-        const text =
-          typeof event.data === 'string' ? event.data : '[binary]';
+      ws.onmessage = (event: MessageEvent<string | Blob | ArrayBuffer>) => {
+        const cfgNow = configRef.current;
+        const raw = event.data;
 
-        let byteSize: number;
-        if (typeof event.data === 'string') byteSize = new Blob([event.data]).size;
-        else byteSize = event.data instanceof Blob ? event.data.size : 0;
-
-        if (typeof event.data !== 'string') return;
-
-        msgCounterRef.current += 1;
-
-        try {
-          const parsed = JSON.parse(event.data) as Record<string, unknown>;
-
+        const applyInboundJson = (parsed: Record<string, unknown>, byteApprox: number) => {
           if (parsed.type === 'PONG' || parsed.op === 'pong') {
             const latency = Math.round(performance.now() - pingStartRef.current);
             setStatus((s) => ({ ...s, latencyMs: latency }));
             return;
           }
 
+          msgCounterRef.current += 1;
           setStatus((s) => ({
             ...s,
             messagesReceived: s.messagesReceived + 1,
             lastMessageTime: Date.now(),
-            bytesReceived: s.bytesReceived + byteSize,
+            bytesReceived: s.bytesReceived + byteApprox,
           }));
 
           addToLog({
@@ -298,21 +308,61 @@ export function useConnectionManager(config: ConnectionConfig) {
             direction: 'IN',
           });
 
-          if (cfg.protocol === 'MAVLINK') {
-            applyMavlinkJsonToTelemetry(updateTelemetry, parsed);
-          } else if (cfg.protocol === 'MAVROS') {
+          if (cfgNow.protocol === 'MAVLINK') {
+            handleMAVLinkMessage(updateTelemetry, parsed);
+          } else if (cfgNow.protocol === 'MAVROS') {
             handleMAVROSMessage(parsed, updateTelemetry);
           }
-        } catch {
-          // eslint-disable-next-line no-console
-          console.warn('[ConnectionManager] Parse hatası:', text.slice(0, 120));
+        };
+
+        if (typeof raw === 'string') {
+          const parts = raw
+            .split(/\n/)
+            .map((l) => l.trim())
+            .filter(Boolean);
+          for (const seg of parts) {
+            try {
+              const parsed = JSON.parse(seg) as Record<string, unknown>;
+              const byteApprox = new Blob([seg]).size;
+              applyInboundJson(parsed, byteApprox);
+            } catch {
+              // eslint-disable-next-line no-console
+              console.warn('[ConnectionManager] JSON ayrıştırılamadı:', seg.slice(0, 120));
+            }
+          }
+          return;
         }
+
+        if (cfgNow.protocol !== 'MAVLINK') return;
+
+        const decodeBinary = async () => {
+          let u8: Uint8Array;
+          if (raw instanceof ArrayBuffer) u8 = new Uint8Array(raw);
+          else if (raw instanceof Blob) u8 = new Uint8Array(await raw.arrayBuffer());
+          else if (ArrayBuffer.isView(raw)) {
+            const view = raw as ArrayBufferView;
+            u8 = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+          }
+          else return;
+
+          const records = mavlinkAccRef.current.push(u8);
+          const per = records.length
+            ? Math.max(1, Math.floor(u8.byteLength / records.length))
+            : u8.byteLength;
+          for (const parsed of records) {
+            applyInboundJson(parsed, per);
+          }
+        };
+
+        void decodeBinary().catch(() => {
+          // eslint-disable-next-line no-console
+          console.warn('[ConnectionManager] İkili mesaj işlenemedi');
+        });
       };
 
       ws.onclose = (event: CloseEvent) => {
         // eslint-disable-next-line no-console
         console.log(`[ConnectionManager] Bağlantı kapandı: code=${event.code}`);
-        wsRef.current = null;
         stopPing();
 
         setStatus((s) => ({
@@ -322,11 +372,17 @@ export function useConnectionManager(config: ConnectionConfig) {
           error: event.code !== 1000 ? `Bağlantı kapandı (${event.code})` : null,
         }));
         updateTelemetry({ telemetryConnected: false });
+        useConnectionStore.getState().setLiveLinkActive(false);
+
+        // ReconnectingWebSocket aynı örnek üzerinden yeniden bağlanır; ref'i silme.
+        if (!usedReconnectingRef.current) {
+          wsRef.current = null;
+        }
 
         const reopen =
           cfg.autoReconnect &&
           event.code !== 1000 &&
-          !manualCloseRef.current &&
+          allowReconnectRef.current &&
           !usedReconnectingRef.current;
 
         if (reopen) {
@@ -374,6 +430,7 @@ export function useConnectionManager(config: ConnectionConfig) {
 
   useEffect(() => {
     teardownSocketOnly();
+    useConnectionStore.getState().setLiveLinkActive(false);
     setStatus({
       protocol: config.protocol,
       connected: false,
@@ -388,5 +445,6 @@ export function useConnectionManager(config: ConnectionConfig) {
 
   useEffect(() => () => teardownSocketOnly(), [teardownSocketOnly]);
 
-  return { status, messageLog, connect, disconnect, sendCommand };
+  const api: ConnectionManagerApi = { status, messageLog, connect, disconnect, sendCommand };
+  return api;
 }
