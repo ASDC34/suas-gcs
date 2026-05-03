@@ -81,8 +81,21 @@ const CoordinateDisplay: React.FC = () => {
   const lon = useTelemetryStore((s) => s.lon);
 
   return (
-    <div className="hud-mono text-xs" style={{ color: '#4a6080' }}>
-      {lat.toFixed(5)}°N &nbsp; {Math.abs(lon).toFixed(5)}°W
+    <div
+      className="hud-mono"
+      style={{
+        color: '#4a6080',
+        fontSize: 11,
+        lineHeight: 1.35,
+        wordBreak: 'break-all',
+        overflowWrap: 'anywhere',
+        minWidth: 0,
+        maxWidth: '100%',
+      }}
+    >
+      <span>{lat.toFixed(5)}°N</span>
+      <span style={{ margin: '0 0.35em', color: '#2a4060' }}>·</span>
+      <span>{Math.abs(lon).toFixed(5)}°W</span>
     </div>
   );
 };
@@ -121,14 +134,14 @@ export default function App() {
       <IntentOverlay />
 
       <header
-        className="flex items-center gap-4 px-4 py-2 flex-shrink-0"
+        className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 flex-shrink-0"
         style={{
           borderBottom: '1px solid #1e2d40',
           background: 'linear-gradient(to right, #0d1321, #070b14)',
         }}
       >
-        <div className="flex flex-col gap-1 flex-shrink-0" style={{ minWidth: 0 }}>
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-1 flex-shrink-0" style={{ minWidth: 0, maxWidth: 'min(420px, 100%)' }}>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <div
               style={{
                 fontFamily: "'Orbitron', monospace",
@@ -148,9 +161,10 @@ export default function App() {
             </div>
           </div>
           <FlightModeBadge />
+          <CoordinateDisplay />
         </div>
 
-        <div className="flex flex-1 items-center justify-center min-w-0">
+        <div className="flex flex-1 items-center justify-center min-w-[200px] basis-[280px]">
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
             {([
               { id: 'MAP' as const, label: '🗺 HARİTA' },
@@ -179,7 +193,10 @@ export default function App() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div
+          className="flex flex-wrap items-center justify-end gap-2 flex-shrink-0 ml-auto"
+          style={{ minWidth: 0 }}
+        >
           <button
             type="button"
             onClick={() => {
@@ -191,19 +208,25 @@ export default function App() {
                 'noopener,noreferrer,width=1280,height=800'
               );
             }}
-            className="text-xs font-bold px-3 py-1.5 rounded transition-colors"
+            className="font-bold rounded transition-colors"
             style={{
               fontFamily: "'Barlow Condensed', sans-serif",
-              letterSpacing: '0.08em',
+              letterSpacing: '0.06em',
               backgroundColor: '#1e3a5f',
               color: '#e0ecff',
               border: '1px solid #3b82f6',
               cursor: 'pointer',
+              fontSize: 11,
+              padding: '6px 10px',
+              whiteSpace: 'nowrap',
             }}
           >
             HAKİM EKRANI AÇ
           </button>
-          <div className="text-hud-secondary text-sm hud-mono">
+          <div
+            className="text-hud-secondary hud-mono"
+            style={{ fontSize: 11, whiteSpace: 'nowrap', lineHeight: 1.2 }}
+          >
             {new Date().toLocaleTimeString('en-US', { hour12: false })} CDT
           </div>
         </div>
@@ -266,7 +289,7 @@ export default function App() {
 
         <aside
           className="flex flex-col items-center gap-2 p-2 flex-shrink-0"
-          style={{ width: 106, minWidth: 106, borderLeft: '1px solid #1e2d40' }}
+          style={{ width: 110, minWidth: 110, maxWidth: 110, borderLeft: '1px solid #1e2d40' }}
         >
           <AltitudeStrip />
           <div
@@ -285,15 +308,11 @@ export default function App() {
       </main>
 
       <footer
-        className="flex items-center justify-between px-4 py-1.5 flex-shrink-0"
+        className="flex flex-wrap items-center justify-center gap-2 px-4 py-1.5 flex-shrink-0"
         style={{ borderTop: '1px solid #1e2d40', backgroundColor: '#0d1321' }}
       >
-        <div className="flex items-center gap-4">
-          <CoordinateDisplay />
-        </div>
-
         <div
-          className="text-hud-dim text-xs"
+          className="text-hud-dim text-xs min-w-0 text-center"
           style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
         >
           Rule 3.0.6 Compliant · V-Tech SUAS 2026 GCS Rev.5

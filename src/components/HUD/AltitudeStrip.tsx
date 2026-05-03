@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useTelemetryStore } from '../../store/telemetryStore';
 
+/** İçerik genişliği — sağ aside 110px ile hizalı */
 const STRIP_WIDTH = 90;
 const STRIP_HEIGHT = 480;
 const MIN_ALT = 0;
@@ -31,10 +32,13 @@ export const AltitudeStrip: React.FC = React.memo(() => {
   const midY = (coords.ceilY + coords.floorY) / 2;
   const cx = STRIP_WIDTH / 2;
 
+  const y400 = Math.max(11, coords.ceilY - 2);
+  const y150 = Math.min(STRIP_HEIGHT - 4, coords.floorY + 13);
+
   return (
     <div
       className={`relative flex flex-col items-center ${isDanger ? 'animate-blink-danger' : ''}`}
-      style={{ width: STRIP_WIDTH, height: STRIP_HEIGHT }}
+      style={{ width: STRIP_WIDTH, height: STRIP_HEIGHT, overflow: 'visible' }}
       role="meter"
       aria-label={`İrtifa: ${displayAlt} feet AGL`}
       aria-valuenow={displayAlt}
@@ -45,7 +49,7 @@ export const AltitudeStrip: React.FC = React.memo(() => {
         width={STRIP_WIDTH}
         height={STRIP_HEIGHT}
         viewBox={`0 0 ${STRIP_WIDTH} ${STRIP_HEIGHT}`}
-        style={{ display: 'block' }}
+        style={{ display: 'block', overflow: 'visible' }}
       >
         <rect x={0} y={0} width={STRIP_WIDTH} height={coords.ceilY} fill="#450a0a" />
         <rect
@@ -103,9 +107,9 @@ export const AltitudeStrip: React.FC = React.memo(() => {
         />
         <text
           x={cx}
-          y={coords.ceilY - 4}
+          y={y400}
           textAnchor="middle"
-          fontSize={7}
+          fontSize={8}
           fill="#ef4444"
           fontFamily="'JetBrains Mono', monospace"
           fontWeight="600"
@@ -124,9 +128,9 @@ export const AltitudeStrip: React.FC = React.memo(() => {
         />
         <text
           x={cx}
-          y={coords.floorY + 11}
+          y={y150}
           textAnchor="middle"
-          fontSize={7}
+          fontSize={8}
           fill="#ef4444"
           fontFamily="'JetBrains Mono', monospace"
           fontWeight="600"
@@ -212,31 +216,30 @@ export const AltitudeStrip: React.FC = React.memo(() => {
           </text>
         )}
 
+        {/* Döndürme yok: 90px içinde tam okunur */}
         <text
           x={cx}
-          y={midY - 6}
+          y={midY - 5}
           textAnchor="middle"
-          fontSize={6}
+          fontSize={7}
           fill="#10b981"
           fontFamily="'Barlow Condensed', sans-serif"
           fontWeight="600"
-          opacity={0.85}
-          letterSpacing="0.06em"
-          transform={`rotate(-90, ${cx}, ${midY - 6})`}
+          opacity={0.9}
+          letterSpacing="0.04em"
         >
           FLIGHT
         </text>
         <text
           x={cx}
-          y={midY + 6}
+          y={midY + 9}
           textAnchor="middle"
-          fontSize={6}
+          fontSize={7}
           fill="#10b981"
           fontFamily="'Barlow Condensed', sans-serif"
           fontWeight="600"
-          opacity={0.85}
-          letterSpacing="0.06em"
-          transform={`rotate(-90, ${cx}, ${midY + 6})`}
+          opacity={0.9}
+          letterSpacing="0.04em"
         >
           WINDOW
         </text>
