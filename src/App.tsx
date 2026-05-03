@@ -211,12 +211,12 @@ export default function App() {
 
       <main className="flex flex-1 overflow-hidden" style={{ minHeight: 0 }}>
         <aside
+          className="gcs-sidebar"
           style={{
             width: 260,
             minWidth: 260,
             maxWidth: 260,
-            overflowY: 'auto',
-            overflowX: 'hidden',
+            overflow: 'hidden',
             borderRight: '1px solid #1e2d40',
             display: 'flex',
             flexDirection: 'column',
@@ -224,21 +224,30 @@ export default function App() {
             padding: 8,
             flexShrink: 0,
             minHeight: 0,
+            alignSelf: 'stretch',
           }}
         >
-          <CameraSection />
-          <CompassSection />
-          <TelemetryReadout />
-          <RFSignalBars />
-          <MissionTimer />
-          <LapCounter />
-          <ScoringPanel />
-          <DropCalculatorPanel />
-          <PreflightChecklist />
-          <MissionFlowPanel />
-          <MissionControlPanel />
-          <PenaltyTracker />
-          <ConnectionManagerPanel resetSimulation={resetSimulation} />
+          {/* EN ÜST: Battery SOC (TelemetryReadout) öncesi — her zaman görünür */}
+          <div className="flex flex-col gap-2 shrink-0" style={{ minWidth: 0 }}>
+            <CameraSection />
+            <CompassSection />
+          </div>
+          <div
+            className="gcs-sidebar-inner flex min-h-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto"
+            style={{ minWidth: 0 }}
+          >
+            <TelemetryReadout />
+            <RFSignalBars />
+            <MissionTimer />
+            <LapCounter />
+            <ScoringPanel />
+            <DropCalculatorPanel />
+            <PreflightChecklist />
+            <MissionFlowPanel />
+            <MissionControlPanel />
+            <PenaltyTracker />
+            <ConnectionManagerPanel resetSimulation={resetSimulation} />
+          </div>
         </aside>
 
         <div className="flex flex-1 flex-col min-h-0 p-0 relative overflow-hidden">
