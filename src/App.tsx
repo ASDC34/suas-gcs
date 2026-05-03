@@ -1,4 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { CameraSection } from './components/Camera/CameraSection';
+import { CompassSection } from './components/Camera/CompassSection';
 import { IntentOverlay } from './components/Controls/IntentOverlay';
 import { MissionControlPanel } from './components/Controls/MissionControlPanel';
 import { RTLButton } from './components/Controls/RTLButton';
@@ -16,6 +18,7 @@ import { PreflightChecklist } from './components/Mission/PreflightChecklist';
 import { ScoringPanel } from './components/Mission/ScoringPanel';
 import { ConnectionSelector } from './components/Controls/ConnectionSelector';
 import { DropCalculatorPanel } from './components/Payload/DropCalculatorPanel';
+import { ParameterPanel } from './components/Parameters/ParameterPanel';
 import { useMAVLinkConnection } from './hooks/useMAVLinkConnection';
 import { useTelemetrySimulator } from './hooks/useTelemetrySimulator';
 import { useConnectionModeStore } from './store/connectionModeStore';
@@ -86,7 +89,10 @@ const CoordinateDisplay: React.FC = () => {
   );
 };
 
+type MainTab = 'MAP' | 'PARAMS';
+
 export default function App() {
+  const [activeTab, setActiveTab] = useState<MainTab>('MAP');
   const mode = useConnectionModeStore((s) => s.mode);
   const { resetSimulation } = useTelemetrySimulator(mode === 'SIMULATOR');
   useMAVLinkConnection(mode);
@@ -118,13 +124,13 @@ export default function App() {
       <IntentOverlay />
 
       <header
-        className="flex items-center justify-between px-4 py-2 flex-shrink-0"
+        className="flex items-center gap-4 px-4 py-2 flex-shrink-0"
         style={{
           borderBottom: '1px solid #1e2d40',
           background: 'linear-gradient(to right, #0d1321, #070b14)',
         }}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-shrink-0">
           <div
             style={{
               fontFamily: "'Orbitron', monospace",
@@ -144,9 +150,40 @@ export default function App() {
           </div>
         </div>
 
-        <FlightModeBadge />
+        <div className="flex flex-1 items-center justify-center min-w-0">
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
+            {([
+              { id: 'MAP' as const, label: '🗺 HARİTA' },
+              { id: 'PARAMS' as const, label: '⚙ PARAMETRELER' },
+            ] satisfies { id: MainTab; label: string }[]).map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setActiveTab(id)}
+                style={{
+                  padding: '4px 14px',
+                  borderRadius: 3,
+                  border: `1px solid ${activeTab === id ? '#3b82f6' : '#1e2d40'}`,
+                  backgroundColor: activeTab === id ? '#1e3a5f' : '#0d1321',
+                  color: activeTab === id ? '#3b82f6' : '#4a6080',
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <FlightModeBadge />
+        </div>
+
+        <div className="flex items-center gap-3 flex-shrink-0">
           <button
             type="button"
             onClick={() => {
@@ -182,6 +219,8 @@ export default function App() {
           style={{ width: 260, borderRight: '1px solid #1e2d40' }}
         >
           <div className="gcs-sidebar-inner flex min-h-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto px-3 py-3">
+            <CameraSection />
+            <CompassSection />
             <TelemetryReadout />
             <RFSignalBars />
             <PreflightChecklist />
@@ -197,9 +236,18 @@ export default function App() {
           </div>
         </aside>
 
-        <div className="flex-1 p-0 relative overflow-hidden">
-          <MissionMap />
-          <WaypointEditorPanel />
+        <div className="flex flex-1 flex-col min-h-0 p-0 relative overflow-hidden">
+          {activeTab === 'MAP' && (
+            <>
+              <MissionMap />
+              <WaypointEditorPanel />
+            </>
+          )}
+          {activeTab === 'PARAMS' && (
+            <div className="flex flex-1 min-h-0 p-3" style={{ minHeight: 0 }}>
+              <ParameterPanel />
+            </div>
+          )}
         </div>
 
         <aside
