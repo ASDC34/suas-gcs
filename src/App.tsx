@@ -16,12 +16,11 @@ import { MissionTimer } from './components/Mission/MissionTimer';
 import { PenaltyTracker } from './components/Mission/PenaltyTracker';
 import { PreflightChecklist } from './components/Mission/PreflightChecklist';
 import { ScoringPanel } from './components/Mission/ScoringPanel';
-import { ConnectionSelector } from './components/Controls/ConnectionSelector';
+import { ConnectionManagerPanel } from './components/Controls/ConnectionManager';
 import { DropCalculatorPanel } from './components/Payload/DropCalculatorPanel';
 import { ParameterPanel } from './components/Parameters/ParameterPanel';
-import { useMAVLinkConnection } from './hooks/useMAVLinkConnection';
 import { useTelemetrySimulator } from './hooks/useTelemetrySimulator';
-import { useConnectionModeStore } from './store/connectionModeStore';
+import { useConnectionStore } from './store/connectionStore';
 import { useControlStore } from './store/controlStore';
 import { useTelemetryStore } from './store/telemetryStore';
 
@@ -93,9 +92,8 @@ type MainTab = 'MAP' | 'PARAMS';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<MainTab>('MAP');
-  const mode = useConnectionModeStore((s) => s.mode);
-  const { resetSimulation } = useTelemetrySimulator(mode === 'SIMULATOR');
-  useMAVLinkConnection(mode);
+  const protocol = useConnectionStore((s) => s.config.protocol);
+  const { resetSimulation } = useTelemetrySimulator(protocol === 'SIMULATOR');
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -232,7 +230,7 @@ export default function App() {
             <LapCounter />
             <ScoringPanel />
             <DropCalculatorPanel />
-            <ConnectionSelector resetSimulation={resetSimulation} />
+            <ConnectionManagerPanel resetSimulation={resetSimulation} />
           </div>
         </aside>
 

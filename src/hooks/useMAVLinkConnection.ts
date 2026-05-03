@@ -1,6 +1,4 @@
-import { useEffect, useRef } from 'react';
 import type { FlightMode, GpsFixType, TelemetryState } from '../store/telemetryStore';
-import { useTelemetryStore } from '../store/telemetryStore';
 
 /** ArduPilot Copter MAVLink CUSTOM_MODE (subset). */
 const COPTER_CUSTOM_MODE_MAP: Record<number, FlightMode> = {
@@ -62,8 +60,11 @@ function mapHeartbeatToFlightMode(m: Record<string, unknown>): Partial<Telemetry
   return { armed, flightMode };
 }
 
-function applyMavlinkPayload(
-  updateTelemetry: ReturnType<typeof useTelemetryStore.getState>['updateTelemetry'],
+type TelemetryUpdate = TelemetryState['updateTelemetry'];
+
+/** JSON MAVLink payloads from a MAVProxy / websocket bridge → telemetry store. */
+export function applyMavlinkJsonToTelemetry(
+  updateTelemetry: TelemetryUpdate,
   obj: Record<string, unknown>
 ) {
   const m = mergeMessage(obj);
@@ -108,10 +109,15 @@ function applyMavlinkPayload(
         Number.isFinite(lonDeg) &&
         Math.abs(latDeg) <= 90 &&
         Math.abs(lonDeg) <= 180;
+      const hdgCs = typeof m.hdg !== 'undefined' ? Number(m.hdg) : NaN;
+      const headingDeg =
+        Number.isFinite(hdgCs) && hdgCs >= 0 && hdgCs <= 36000 ? hdgCs / 100 : undefined;
+
       updateTelemetry({
         ...(coordsOk ? { lat: latDeg, lon: lonDeg } : {}),
         ...(altFt !== undefined ? { altitudeAGL: altFt } : {}),
         ...(altMslFt !== undefined ? { altitudeMSL: altMslFt } : {}),
+        ...(headingDeg !== undefined ? { heading: headingDeg } : {}),
       });
       break;
     }
@@ -119,12 +125,26 @@ function applyMavlinkPayload(
       const gsMs = Number(m.groundspeed ?? m.ground_speed ?? NaN);
       const heading = typeof m.heading !== 'undefined' ? Number(m.heading) : undefined;
       const climb = typeof m.climb !== 'undefined' ? Number(m.climb) : undefined;
+      const airMs = typeof m.airspeed !== 'undefined' ? Number(m.airspeed) : NaN;
+      const altM =
+        typeof m.alt !== 'undefined'
+          ? Number(m.alt)
+          : typeof (m as { altitude?: unknown }).altitude !== 'undefined'
+            ? Number((m as { altitude?: unknown }).altitude)
+            : NaN;
       const knots = Number.isFinite(gsMs) ? gsMs * 1.94384 : undefined;
+      const climbFtPerS =
+        climb !== undefined && Number.isFinite(climb) ? climb * 3.28084 : undefined;
+      const altAglGuess =
+        Number.isFinite(altM) && altM !== 0 ? altM * 3.28084 : undefined;
+
       updateTelemetry({
         ...(Number.isFinite(gsMs) ? { groundSpeedMs: gsMs } : {}),
         ...(knots !== undefined ? { groundSpeedKnots: knots } : {}),
+        ...(Number.isFinite(airMs) ? { airspeedMs: airMs } : {}),
         ...(heading !== undefined && Number.isFinite(heading) ? { heading } : {}),
-        ...(climb !== undefined && Number.isFinite(climb) ? { climbRate: climb } : {}),
+        ...(climbFtPerS !== undefined ? { climbRate: climbFtPerS } : {}),
+        ...(altAglGuess !== undefined ? { altitudeAGL: altAglGuess } : {}),
       });
       break;
     }
@@ -151,10 +171,34 @@ function applyMavlinkPayload(
       break;
     }
     case 'HEARTBEAT': {
-      updateTelemetry(mapHeartbeatToFlightMode(m));
+      const hb = mapHeartbeatToFlightMode(m);
+      updateTelemetry({
+        ...hb,
+        inFlight: hb.armed ?? false,
+        weightOnWheels: !hb.armed,
+      });
       break;
     }
-    case 'BATTERY_STATUS':
+    case 'BATTERY_STATUS': {
+      const voltsArr = (m.voltages as unknown[]) ?? [];
+      const vCell = typeof voltsArr[0] === 'number' ? Number(voltsArr[0]) : NaN;
+      if (Number.isFinite(vCell) && vCell > 0) {
+        updateTelemetry({ batteryVoltage: vCell / 1000 });
+      }
+      if (typeof m.battery_remaining !== 'undefined') {
+        const pct = Number(m.battery_remaining);
+        if (Number.isFinite(pct)) updateTelemetry({ batteryPercent: Math.round(pct) });
+      }
+      if (typeof m.voltage_battery !== 'undefined') {
+        const vb = Number(m.voltage_battery) / 1000;
+        if (Number.isFinite(vb)) updateTelemetry({ batteryVoltage: vb });
+      }
+      if (typeof m.current_battery !== 'undefined') {
+        const cur = Number(m.current_battery) / 100;
+        if (Number.isFinite(cur)) updateTelemetry({ batteryCurrent: cur });
+      }
+      break;
+    }
     case 'SYS_STATUS': {
       if (typeof m.battery_remaining !== 'undefined') {
         const pct = Number(m.battery_remaining);
@@ -171,75 +215,38 @@ function applyMavlinkPayload(
       break;
     }
     case 'RC_CHANNELS': {
+      const rssi = typeof m.rssi !== 'undefined' ? Number(m.rssi) : undefined;
+      const quality =
+        rssi !== undefined && Number.isFinite(rssi)
+          ? Math.min(100, Math.max(0, Math.round((rssi / 255) * 100)))
+          : undefined;
       updateTelemetry({
         rcConnected:
           typeof m.rssi === 'undefined' ? true : Number(m.rssi) > 40,
+        ...(quality !== undefined ? { rfLinkQuality: quality } : {}),
+      });
+      break;
+    }
+    case 'RADIO_STATUS': {
+      const rssi = typeof m.rssi !== 'undefined' ? Number(m.rssi) : undefined;
+      const noise = typeof m.noise !== 'undefined' ? Number(m.noise) : undefined;
+      const snr =
+        rssi !== undefined &&
+        noise !== undefined &&
+        Number.isFinite(rssi) &&
+        Number.isFinite(noise) &&
+        noise > 0
+          ? Math.round(20 * Math.log10(rssi / noise))
+          : undefined;
+      updateTelemetry({
+        ...(rssi !== undefined && Number.isFinite(rssi)
+          ? { rfLinkQuality: Math.min(100, Math.max(0, rssi)) }
+          : {}),
+        ...(snr !== undefined ? { rfSnrDb: snr } : {}),
       });
       break;
     }
     default:
       break;
   }
-}
-
-/** WebSocket MAVLink adapter: JSON payloads from a bridge listening on MAVLink. */
-export function useMAVLinkConnection(mode: 'SIMULATOR' | 'MAVLINK') {
-  const updateTelemetry = useTelemetryStore((s) => s.updateTelemetry);
-  const socketRef = useRef<WebSocket | null>(null);
-
-  useEffect(() => {
-    if (mode !== 'MAVLINK') {
-      socketRef.current?.close();
-      socketRef.current = null;
-      return;
-    }
-
-    const url = process.env.REACT_APP_MAVLINK_URL ?? 'ws://localhost:14551';
-
-    const ws = new WebSocket(url);
-    socketRef.current = ws;
-
-    ws.onopen = () => {
-      updateTelemetry({
-        telemetryConnected: true,
-        rfLinkQuality: 90,
-      });
-    };
-
-    ws.onclose = () => {
-      socketRef.current = null;
-      updateTelemetry({
-        telemetryConnected: false,
-        rfLinkQuality: 0,
-      });
-    };
-
-    ws.onerror = () => {
-      updateTelemetry({
-        telemetryConnected: false,
-        rfLinkQuality: 0,
-      });
-    };
-
-    ws.onmessage = (ev: MessageEvent) => {
-      try {
-        let data: unknown;
-        if (typeof ev.data === 'string') data = JSON.parse(ev.data);
-        else return;
-        if (data !== null && typeof data === 'object') {
-          applyMavlinkPayload(
-            updateTelemetry,
-            data as Record<string, unknown>
-          );
-        }
-      } catch {
-        /* ignore malformed lines */
-      }
-    };
-
-    return () => {
-      ws.close();
-      socketRef.current = null;
-    };
-  }, [mode, updateTelemetry]);
 }

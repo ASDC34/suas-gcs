@@ -3,11 +3,10 @@ import { MapContainer, Polygon, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useMissionStore } from '../store/missionStore';
 import { useTelemetryStore } from '../store/telemetryStore';
-import { useConnectionModeStore } from '../store/connectionModeStore';
 import { useTelemetrySimulator } from '../hooks/useTelemetrySimulator';
-import { useMAVLinkConnection } from '../hooks/useMAVLinkConnection';
 import { createDroneIcon } from '../components/Map/mapIcons';
-import { ConnectionSelector } from '../components/Controls/ConnectionSelector';
+import { ConnectionManagerPanel } from '../components/Controls/ConnectionManager';
+import { useConnectionStore } from '../store/connectionStore';
 
 const JudgeDroneMarker: React.FC = () => {
   const map = useMap();
@@ -76,7 +75,14 @@ const JudgeHud: React.FC = () => {
   const lon = useTelemetryStore((s) => s.lon);
   const knots = useTelemetryStore((s) => s.groundSpeedKnots);
   const aglFt = useTelemetryStore((s) => s.altitudeAGL);
-  const mode = useConnectionModeStore((s) => s.mode);
+  const protocol = useConnectionStore((s) => s.config.protocol);
+
+  const telemetrySourceLabel =
+    protocol === 'SIMULATOR'
+      ? 'simülasyon'
+      : protocol === 'MAVLINK'
+        ? 'MAVLink WebSocket'
+        : 'MAVROS / rosbridge';
 
   return (
     <div
@@ -128,7 +134,7 @@ const JudgeHud: React.FC = () => {
             Φ {lat.toFixed(5)}°N / λ {Math.abs(lon).toFixed(5)}°W
           </div>
           <div className="text-[10px] text-hud-dim capitalize">
-            kaynak: {mode === 'SIMULATOR' ? 'simülasyon' : 'MAVLink WebSocket'}
+            kaynak: {telemetrySourceLabel}
           </div>
         </div>
       </div>
@@ -138,9 +144,8 @@ const JudgeHud: React.FC = () => {
 
 /** Hakim görünümü — harita + büyük knot / ft AGL okuyucuları (Rule 3.0.6). */
 export default function JudgeDisplay() {
-  const mode = useConnectionModeStore((s) => s.mode);
-  const { resetSimulation } = useTelemetrySimulator(mode === 'SIMULATOR');
-  useMAVLinkConnection(mode);
+  const protocol = useConnectionStore((s) => s.config.protocol);
+  const { resetSimulation } = useTelemetrySimulator(protocol === 'SIMULATOR');
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-[#070b14]">
@@ -156,10 +161,14 @@ export default function JudgeDisplay() {
         <div
           className="pointer-events-auto text-[10px] hud-mono uppercase text-hud-dim px-3 py-1 rounded border border-[#1e2d40] bg-[#0d1321e8]"
           style={{
-            opacity: mode === 'MAVLINK' ? 0.95 : 0.85,
+            opacity: protocol === 'SIMULATOR' ? 0.85 : 0.95,
           }}
         >
-          {mode === 'MAVLINK' ? 'CANLI MAVLink' : 'SİMÜLATÖR'}
+          {protocol === 'MAVLINK'
+            ? 'CANLI MAVLink'
+            : protocol === 'MAVROS'
+              ? 'CANLI MAVROS'
+              : 'SİMÜLATÖR'}
         </div>
       </header>
       <div className="absolute inset-0 z-0">
@@ -179,8 +188,8 @@ export default function JudgeDisplay() {
         </MapContainer>
       </div>
       <JudgeHud />
-      <div className="absolute bottom-3 left-3 z-[1002] w-[216px] max-w-[calc(100vw-1.5rem)]">
-        <ConnectionSelector resetSimulation={resetSimulation} />
+      <div className="absolute bottom-3 left-3 z-[1002] w-[278px] max-w-[calc(100vw-1.5rem)]">
+        <ConnectionManagerPanel resetSimulation={resetSimulation} />
       </div>
       <footer
         className="absolute bottom-3 right-3 z-[1002] max-w-[min(50%,260px)] text-right text-[10px] leading-snug text-hud-dim"
