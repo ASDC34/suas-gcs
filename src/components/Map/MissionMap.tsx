@@ -9,12 +9,8 @@ import {
 import L from 'leaflet';
 import { useMissionStore } from '../../store/missionStore';
 import { useTelemetryStore } from '../../store/telemetryStore';
-import {
-  createDroneIcon,
-  createGhostIcon,
-  createTargetIcon,
-  createWaypointIcon,
-} from './mapIcons';
+import { createDroneIcon, createGhostIcon, createWaypointIcon } from './mapIcons';
+import { DetectionOverlay } from './DetectionOverlay';
 
 const DroneLayer: React.FC = () => {
   const map = useMap();
@@ -236,39 +232,6 @@ const FlightBoundaryLayer: React.FC = () => {
   );
 };
 
-const DetectionLayer: React.FC = () => {
-  const tentLocation = useMissionStore((s) => s.detectedTentLocation);
-  const mannequinLocation = useMissionStore((s) => s.detectedMannequinLocation);
-  const map = useMap();
-
-  const tentMarkerRef = useRef<L.Marker | null>(null);
-  const mannequinRef = useRef<L.Marker | null>(null);
-
-  useEffect(() => {
-    tentMarkerRef.current?.remove();
-    if (tentLocation) {
-      tentMarkerRef.current = L.marker([tentLocation.lat, tentLocation.lon], {
-        icon: createTargetIcon('TENT'),
-      })
-        .addTo(map)
-        .bindTooltip('Çadır Hedefi', { className: 'waypoint-tooltip' });
-    }
-  }, [map, tentLocation]);
-
-  useEffect(() => {
-    mannequinRef.current?.remove();
-    if (mannequinLocation) {
-      mannequinRef.current = L.marker([mannequinLocation.lat, mannequinLocation.lon], {
-        icon: createTargetIcon('MANNEQUIN'),
-      })
-        .addTo(map)
-        .bindTooltip('Manken Hedefi', { className: 'waypoint-tooltip' });
-    }
-  }, [map, mannequinLocation]);
-
-  return null;
-};
-
 const MapZoomControls: React.FC = () => {
   const map = useMap();
 
@@ -353,7 +316,7 @@ export const MissionMap: React.FC = () => {
         <FlightBoundaryLayer />
         <SearchGridLayer />
         <WaypointLayer />
-        <DetectionLayer />
+        <DetectionOverlay />
         <DroneLayer />
 
         {/* MapContainer context'inde olmalı (useMap) */}

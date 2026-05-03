@@ -18,6 +18,7 @@ import { ScoringPanel } from './components/Mission/ScoringPanel';
 import { ConnectionManagerPanel } from './components/Controls/ConnectionManager';
 import { DropCalculatorPanel } from './components/Payload/DropCalculatorPanel';
 import { ParameterPanel } from './components/Parameters/ParameterPanel';
+import { useAudioAlerts } from './hooks/useAudioAlerts';
 import { useTelemetrySimulator } from './hooks/useTelemetrySimulator';
 import { useConnectionStore } from './store/connectionStore';
 import { useControlStore } from './store/controlStore';
@@ -102,6 +103,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<MainTab>('MAP');
   const protocol = useConnectionStore((s) => s.config.protocol);
   const { resetSimulation } = useTelemetrySimulator(protocol === 'SIMULATOR');
+  useAudioAlerts(true);
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {

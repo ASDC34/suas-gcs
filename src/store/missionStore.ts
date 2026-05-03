@@ -146,7 +146,8 @@ interface MissionStoreState {
   setWaypointStatus: (id: string, status: Waypoint['status']) => void;
   selectWaypoint: (id: string | null) => void;
   setMissionPhase: (phase: MissionPhase) => void;
-  setDetectedTargets: (tent?: LatLon, mannequin?: LatLon) => void;
+  /** `undefined` = değiştirme; `null` = temizle */
+  setDetectedTargets: (tent?: LatLon | null, mannequin?: LatLon | null) => void;
   updateSearchBoundaryFromInterop: (points: LatLon[]) => void;
 }
 
@@ -210,10 +211,11 @@ export const useMissionStore = create<MissionStoreState>((set) => ({
   setMissionPhase: (phase) => set({ missionPhase: phase }),
 
   setDetectedTargets: (tent, mannequin) =>
-    set({
-      detectedTentLocation: tent ?? null,
-      detectedMannequinLocation: mannequin ?? null,
-    }),
+    set((state) => ({
+      detectedTentLocation: tent === undefined ? state.detectedTentLocation : tent,
+      detectedMannequinLocation:
+        mannequin === undefined ? state.detectedMannequinLocation : mannequin,
+    })),
 
   updateSearchBoundaryFromInterop: (points) =>
     set(() => ({
