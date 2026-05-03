@@ -4,6 +4,10 @@ export interface ConnectionConfig {
   protocol: Protocol;
   mavlinkUrl: string;
   mavrosUrl: string;
+  /** MAVProxy'nin çalıştığı makinenin IP adresi (bridge bu adrese bağlanır) */
+  bridgeHost: string;
+  /** MAVProxy'nin tcpin portu (bridge buraya bağlanır) */
+  bridgePort: number;
   autoReconnect: boolean;
   reconnectInterval: number;
 }
@@ -42,6 +46,8 @@ export const DEFAULT_CONNECTION_CONFIG: ConnectionConfig = {
   protocol: 'SIMULATOR',
   mavlinkUrl: envMavlinkUrl || 'ws://localhost:14552',
   mavrosUrl: envMavrosUrl || 'ws://127.0.0.1:9090',
+  bridgeHost: '192.168.1.100',
+  bridgePort: 14551,
   autoReconnect: true,
   reconnectInterval: 3000,
 };

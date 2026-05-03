@@ -1,163 +1,180 @@
 #!/usr/bin/env node
 /**
- * MAVLink WebSocket Bridge
+ * MAVLink WebSocket Bridge  —  CLIENT mode
  *
- * MAVProxy  ──tcp:127.0.0.1:14551──►  [TCP Server :14551]  this bridge  ──WS:14552──►  Browser GCS
+ *  Bridge, uzak MAVProxy'nin tcpin sunucusuna TCP ile bağlanır.
+ *  Tarayıcı ise bridge'in WebSocket sunucusuna bağlanır.
  *
- * Bridge artık TCP SERVER olarak çalışır; MAVProxy ona bağlanır:
- *   mavproxy.py --master=COM3 --baudrate=921600 --out=tcp:127.0.0.1:14551
+ *  MAVProxy  ←─tcpin:14551─  bridge  ←─WS:14552─  Browser GCS
  *
- * Usage:
- *   Terminal 1: mavproxy.py --master=COM3 --baudrate=921600 --out=tcp:127.0.0.1:14551
- *   Terminal 2: npm run bridge
- *   GCS URL:    ws://localhost:14552
+ *  MAVProxy komutu (uzak bilgisayarda):
+ *    mavproxy.py --master=COM3 --baudrate=921600 --out=tcpin:0.0.0.0:14551
  *
- * Environment overrides:
- *   MAVLINK_TCP_HOST   Bridge'in dinleyeceği IP (default: 0.0.0.0 — tüm arayüzler)
- *   MAVLINK_TCP_PORT   MAVProxy'nin bağlanacağı TCP port (default: 14551)
- *   BRIDGE_WS_PORT     Tarayıcıya açılan WebSocket port (default: 14552)
+ *  Kullanım:
+ *    Terminal 1 (uzak PC):  mavproxy.py ... --out=tcpin:0.0.0.0:14551
+ *    Terminal 2 (bu PC):    npm run bridge
+ *    Tarayıcı URL:          ws://localhost:14552
+ *
+ *  Yapılandırma önceliği (yüksekten düşüğe):
+ *    1. GCS'den gelen BRIDGE_CONFIGURE WebSocket mesajı  (anlık + dosyaya kaydeder)
+ *    2. Ortam değişkenleri  MAVLINK_TCP_HOST / MAVLINK_TCP_PORT / BRIDGE_WS_PORT
+ *    3. bridge.config.json  (proje kökünde)
+ *    4. Dahili varsayılanlar
  */
 
 'use strict';
 
+const fs  = require('fs');
 const net = require('net');
+const path = require('path');
 const { WebSocketServer } = require('ws');
 
-const TCP_BIND_HOST = process.env.MAVLINK_TCP_HOST || '0.0.0.0';
-const TCP_PORT      = parseInt(process.env.MAVLINK_TCP_PORT || '14551', 10);
-const WS_PORT       = parseInt(process.env.BRIDGE_WS_PORT  || '14552', 10);
+// ── Config dosyası ────────────────────────────────────────────────────────────
+const CONFIG_PATH = path.resolve(__dirname, '../../bridge.config.json');
 
-const PING_MS = 5000;
+function loadFileConfig() {
+  try {
+    const raw = fs.readFileSync(CONFIG_PATH, 'utf8');
+    return JSON.parse(raw);
+  } catch (_) {
+    return {};
+  }
+}
 
-// ── logging helpers ───────────────────────────────────────────────────────────
+function saveFileConfig(cfg) {
+  try {
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2) + '\n', 'utf8');
+  } catch (err) {
+    warn('Config dosyası yazılamadı:', err.message);
+  }
+}
+
+const fileCfg = loadFileConfig();
+
+// Aktif bağlantı hedefi (runtime'da değiştirilebilir)
+const target = {
+  host: process.env.MAVLINK_TCP_HOST || fileCfg.mavlinkTcpHost || '192.168.1.100',
+  port: parseInt(process.env.MAVLINK_TCP_PORT || String(fileCfg.mavlinkTcpPort ?? 14551), 10),
+};
+const WS_PORT = parseInt(process.env.BRIDGE_WS_PORT || String(fileCfg.bridgeWsPort ?? 14552), 10);
+
+const RECONNECT_MS = 3000;
+const PING_MS      = 5000;
+
+// ── Logging ───────────────────────────────────────────────────────────────────
 function ts() { return new Date().toISOString().slice(11, 23); }
 function log(...a)  { console.log (`[${ts()}] [bridge]`, ...a); }
 function warn(...a) { console.warn(`[${ts()}] [bridge]`, ...a); }
 
-// ── browser WS clients set ───────────────────────────────────────────────────
+log(`Hedef MAVProxy → tcp://${target.host}:${target.port}`);
+log(`WebSocket sunucu → ws://localhost:${WS_PORT}`);
+
+// ── Browser istemci seti ──────────────────────────────────────────────────────
 const clients = new Set();
 
 function broadcast(data) {
   for (const ws of clients) {
-    try {
-      if (ws.readyState === 1 /* OPEN */) ws.send(data);
-    } catch (_) { /* ignore stale sockets */ }
+    try { if (ws.readyState === 1) ws.send(data); } catch (_) {}
   }
 }
 
-function broadcastStatus(mavConnected) {
+function broadcastStatus() {
   broadcast(JSON.stringify({
     type: 'BRIDGE_STATUS',
-    tcpConnected: mavConnected,
-    tcpPort: TCP_PORT,
+    tcpConnected: !!(tcpSocket && !tcpSocket.destroyed),
+    mavHost: target.host,
+    mavPort: target.port,
   }));
 }
 
-// ── MAVLink frame parser — shared per TCP connection ─────────────────────────
+// ── MAVLink frame ayrıştırıcı ─────────────────────────────────────────────────
 function makeMavParser() {
-  let rxBuf = Buffer.alloc(0);
-
+  let buf = Buffer.alloc(0);
   return function push(chunk) {
-    rxBuf = Buffer.concat([rxBuf, chunk]);
+    buf = Buffer.concat([buf, chunk]);
     let pos = 0;
-
-    while (pos < rxBuf.length) {
-      const b0 = rxBuf[pos];
-
-      // MAVLink v2  STX=0xFD
-      if (b0 === 0xfd) {
-        if (pos + 4 > rxBuf.length) break;
-        const payloadLen = rxBuf[pos + 1];
-        const frameLen   = 12 + payloadLen; // 10B header + payload + 2B CRC
-        if (pos + frameLen > rxBuf.length) break;
-        broadcast(rxBuf.subarray(pos, pos + frameLen));
-        pos += frameLen;
-        continue;
+    while (pos < buf.length) {
+      const b0 = buf[pos];
+      if (b0 === 0xfd) {                              // MAVLink v2
+        if (pos + 4 > buf.length) break;
+        const flen = 12 + buf[pos + 1];
+        if (pos + flen > buf.length) break;
+        broadcast(buf.subarray(pos, pos + flen));
+        pos += flen; continue;
       }
-
-      // MAVLink v1  STX=0xFE
-      if (b0 === 0xfe) {
-        if (pos + 2 > rxBuf.length) break;
-        const payloadLen = rxBuf[pos + 1];
-        const frameLen   = 8 + payloadLen;  // 6B header + payload + 2B CRC
-        if (pos + frameLen > rxBuf.length) break;
-        broadcast(rxBuf.subarray(pos, pos + frameLen));
-        pos += frameLen;
-        continue;
+      if (b0 === 0xfe) {                              // MAVLink v1
+        if (pos + 2 > buf.length) break;
+        const flen = 8 + buf[pos + 1];
+        if (pos + flen > buf.length) break;
+        broadcast(buf.subarray(pos, pos + flen));
+        pos += flen; continue;
       }
-
-      // JSON satır akışı (bazı GCS köprüleri JSON gönderir)
-      if (b0 === 0x7b /* '{' */) {
-        const end = rxBuf.indexOf(0x0a /* '\n' */, pos);
+      if (b0 === 0x7b) {                              // JSON satırı
+        const end = buf.indexOf(0x0a, pos);
         if (end === -1) break;
-        const line = rxBuf.subarray(pos, end).toString('utf8').trim();
-        if (line.length) broadcast(line);
-        pos = end + 1;
-        continue;
+        const line = buf.subarray(pos, end).toString('utf8').trim();
+        if (line) broadcast(line);
+        pos = end + 1; continue;
       }
-
-      // Bilinmeyen byte — atla
-      pos += 1;
+      pos += 1;                                       // bilinmeyen byte
     }
-
-    rxBuf = pos < rxBuf.length ? rxBuf.subarray(pos) : Buffer.alloc(0);
-
-    if (rxBuf.length > 512 * 1024) {
-      warn('rxBuf taştı, sıfırlanıyor');
-      rxBuf = Buffer.alloc(0);
-    }
+    buf = pos < buf.length ? buf.subarray(pos) : Buffer.alloc(0);
+    if (buf.length > 512 * 1024) { warn('rxBuf taştı'); buf = Buffer.alloc(0); }
   };
 }
 
-// ── active MAVProxy socket (en fazla 1 bağlantıya izin ver) ──────────────────
-let mavSocket = null;
+// ── TCP → MAVProxy bağlantısı (client, otomatik yeniden bağlan) ───────────────
+let tcpSocket     = null;
+let reconnTimer   = null;
+let connecting    = false;
+let allowReconn   = true;
 
-// ── TCP SERVER — MAVProxy bu porta bağlanır ───────────────────────────────────
-const tcpServer = net.createServer((sock) => {
-  const remote = `${sock.remoteAddress}:${sock.remotePort}`;
+function scheduleReconnect() {
+  if (reconnTimer || !allowReconn) return;
+  log(`${RECONNECT_MS / 1000}s sonra yeniden denenecek…`);
+  reconnTimer = setTimeout(() => { reconnTimer = null; connectTcp(); }, RECONNECT_MS);
+}
 
-  // Zaten bir MAVProxy bağlıysa yeni bağlantıyı reddet
-  if (mavSocket && !mavSocket.destroyed) {
-    warn(`İkinci TCP bağlantısı reddedildi: ${remote}`);
-    sock.destroy();
-    return;
-  }
+function connectTcp(force = false) {
+  if (!force && (connecting || (tcpSocket && !tcpSocket.destroyed))) return;
+  connecting = true;
 
-  mavSocket = sock;
-  log(`✓ MAVProxy bağlandı: ${remote}`);
-  broadcastStatus(true);
+  log(`MAVProxy'ye bağlanılıyor → tcp://${target.host}:${target.port}`);
 
+  const sock = net.createConnection({ host: target.host, port: target.port });
   const push = makeMavParser();
+
+  sock.on('connect', () => {
+    connecting = false;
+    tcpSocket  = sock;
+    log(`✓ MAVProxy bağlandı: ${target.host}:${target.port}`);
+    broadcastStatus();
+  });
 
   sock.on('data', push);
 
-  // Tarayıcıdan gelen komutlar MAVProxy'ye iletilir (ws.on('message') tarafından)
-  // mavSocket referansı üzerinden yazma yapılıyor.
-
   sock.on('close', () => {
-    log(`MAVProxy bağlantısı kapandı: ${remote}`);
-    if (mavSocket === sock) mavSocket = null;
-    broadcastStatus(false);
+    connecting = false;
+    if (tcpSocket === sock) tcpSocket = null;
+    log('MAVProxy bağlantısı kapandı');
+    broadcastStatus();
+    scheduleReconnect();
   });
 
   sock.on('error', (err) => {
-    warn(`MAVProxy TCP hatası (${remote}):`, err.message);
-    if (mavSocket === sock) mavSocket = null;
-    broadcastStatus(false);
+    connecting = false;
+    if (tcpSocket === sock) tcpSocket = null;
+    warn(`TCP hatası (${target.host}:${target.port}):`, err.message);
+    broadcastStatus();
+    scheduleReconnect();
   });
-});
 
-tcpServer.on('error', (err) => {
-  warn('TCP sunucu hatası:', err.message);
-});
+  sock.setTimeout(10000);
+  sock.on('timeout', () => { warn('TCP zaman aşımı'); sock.destroy(); });
+}
 
-tcpServer.listen(TCP_PORT, TCP_BIND_HOST, () => {
-  log(`TCP sunucu dinliyor → ${TCP_BIND_HOST}:${TCP_PORT}  (MAVProxy buraya bağlanacak)`);
-});
-
-// ── WebSocket SERVER — Tarayıcı buraya bağlanır ───────────────────────────────
+// ── WebSocket sunucu ──────────────────────────────────────────────────────────
 const wss = new WebSocketServer({ port: WS_PORT });
-log(`WebSocket sunucu dinliyor → ws://localhost:${WS_PORT}  (GCS tarayıcısı)`);
 
 wss.on('connection', (ws, req) => {
   const ip = req.socket.remoteAddress;
@@ -165,24 +182,57 @@ wss.on('connection', (ws, req) => {
   clients.add(ws);
   ws._isAlive = true;
 
-  // Mevcut TCP durumunu hemen bildir
+  // Mevcut durumu hemen bildir
   ws.send(JSON.stringify({
     type: 'BRIDGE_STATUS',
-    tcpConnected: !!(mavSocket && !mavSocket.destroyed),
-    tcpPort: TCP_PORT,
+    tcpConnected: !!(tcpSocket && !tcpSocket.destroyed),
+    mavHost: target.host,
+    mavPort: target.port,
   }));
 
   ws.on('pong', () => { ws._isAlive = true; });
 
-  // Tarayıcı → MAVProxy (komutlar)
   ws.on('message', (data) => {
-    if (!mavSocket || mavSocket.destroyed) {
+    // ── BRIDGE_CONFIGURE: GCS'den yeni hedef IP/port ─────────────────────────
+    const text = Buffer.isBuffer(data) ? data.toString('utf8') : String(data);
+    if (text.trimStart().startsWith('{')) {
+      let parsed;
+      try { parsed = JSON.parse(text); } catch (_) { parsed = null; }
+
+      if (parsed && parsed.type === 'BRIDGE_CONFIGURE') {
+        const newHost = typeof parsed.host === 'string' && parsed.host.trim()
+          ? parsed.host.trim() : target.host;
+        const newPort = Number.isFinite(Number(parsed.port))
+          ? Number(parsed.port) : target.port;
+
+        if (newHost !== target.host || newPort !== target.port) {
+          log(`BRIDGE_CONFIGURE → yeni hedef: ${newHost}:${newPort}`);
+          target.host = newHost;
+          target.port = newPort;
+
+          // bridge.config.json'a kaydet
+          saveFileConfig({ mavlinkTcpHost: newHost, mavlinkTcpPort: newPort, bridgeWsPort: WS_PORT });
+
+          // Mevcut TCP bağlantısını kapat, yenisini aç
+          allowReconn = true;
+          if (tcpSocket && !tcpSocket.destroyed) tcpSocket.destroy();
+          if (reconnTimer) { clearTimeout(reconnTimer); reconnTimer = null; }
+          connectTcp(true);
+        } else {
+          log(`BRIDGE_CONFIGURE → hedef değişmedi (${newHost}:${newPort})`);
+          if (!tcpSocket || tcpSocket.destroyed) connectTcp(true);
+        }
+        return;
+      }
+    }
+
+    // ── Normal komut → MAVProxy'ye ilet ──────────────────────────────────────
+    if (!tcpSocket || tcpSocket.destroyed) {
       warn('MAVProxy bağlı değil — komut gönderilemedi');
       return;
     }
     try {
-      const buf = Buffer.isBuffer(data) ? data : Buffer.from(data);
-      mavSocket.write(buf);
+      tcpSocket.write(Buffer.isBuffer(data) ? data : Buffer.from(data));
     } catch (err) {
       warn('TCP write hatası:', err.message);
     }
@@ -199,31 +249,28 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-wss.on('error', (err) => {
-  warn('WebSocket sunucu hatası:', err.message);
-});
+wss.on('error', (err) => { warn('WS sunucu hatası:', err.message); });
 
-// ── heartbeat: kopuk tarayıcı bağlantılarını temizle ─────────────────────────
+// ── Heartbeat ─────────────────────────────────────────────────────────────────
 setInterval(() => {
   for (const ws of wss.clients) {
-    if (ws._isAlive === false) {
-      ws.terminate();
-      clients.delete(ws);
-      continue;
-    }
+    if (ws._isAlive === false) { ws.terminate(); clients.delete(ws); continue; }
     ws._isAlive = false;
     ws.ping();
   }
 }, PING_MS);
 
-// ── graceful shutdown ─────────────────────────────────────────────────────────
+// ── Başlangıç bağlantısı ──────────────────────────────────────────────────────
+connectTcp();
+
+// ── Graceful shutdown ─────────────────────────────────────────────────────────
 function shutdown() {
   log('Kapatılıyor…');
-  if (mavSocket) mavSocket.destroy();
-  tcpServer.close();
+  allowReconn = false;
+  if (reconnTimer) clearTimeout(reconnTimer);
+  if (tcpSocket) tcpSocket.destroy();
   wss.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 2000);
 }
-
 process.on('SIGINT',  shutdown);
 process.on('SIGTERM', shutdown);

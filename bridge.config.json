@@ -1,0 +1,5 @@
+{
+  "mavlinkTcpHost": "192.168.1.100",
+  "mavlinkTcpPort": 14551,
+  "bridgeWsPort": 14552
+}

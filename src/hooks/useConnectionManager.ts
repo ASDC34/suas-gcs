@@ -244,6 +244,13 @@ export function useConnectionManager(config: ConnectionConfig) {
         stopPing();
 
         if (cfg.protocol === 'MAVLINK') {
+          // Bridge'e MAVProxy hedefini bildir (uzak IP/port)
+          ws.send(JSON.stringify({
+            type: 'BRIDGE_CONFIGURE',
+            host: cfg.bridgeHost,
+            port: cfg.bridgePort,
+          }));
+
           pingTimerRef.current = setInterval(() => {
             if (ws.readyState !== WebSocket.OPEN) return;
             pingStartRef.current = performance.now();
@@ -289,6 +296,11 @@ export function useConnectionManager(config: ConnectionConfig) {
           if (parsed.type === 'PONG' || parsed.op === 'pong') {
             const latency = Math.round(performance.now() - pingStartRef.current);
             setStatus((s) => ({ ...s, latencyMs: latency }));
+            return;
+          }
+
+          // Bridge'in dahili durum mesajlarını telemetri olarak işleme
+          if (parsed.type === 'BRIDGE_STATUS' || parsed.type === 'BRIDGE_CONFIGURE') {
             return;
           }
 
