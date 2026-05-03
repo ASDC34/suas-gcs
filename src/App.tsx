@@ -139,7 +139,7 @@ export default function App() {
       <IntentOverlay />
 
       <header
-        className="relative z-[60] flex flex-shrink-0 flex-wrap items-center gap-x-3 gap-y-2 overflow-visible px-3 py-2"
+        className="relative z-[10000] flex flex-shrink-0 flex-wrap items-center gap-x-3 gap-y-2 overflow-visible px-3 py-2"
         style={{
           borderBottom: '1px solid #1e2d40',
           background: 'linear-gradient(to right, #0d1321, #070b14)',

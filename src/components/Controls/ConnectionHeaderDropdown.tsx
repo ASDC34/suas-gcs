@@ -65,7 +65,7 @@ export const ConnectionHeaderDropdown: React.FC<ConnectionHeaderDropdownProps> =
   };
 
   return (
-    <div ref={rootRef} className="relative z-[70] flex-shrink-0">
+    <div ref={rootRef} className="relative flex-shrink-0">
       <button
         type="button"
         aria-expanded={open}
@@ -107,8 +107,12 @@ export const ConnectionHeaderDropdown: React.FC<ConnectionHeaderDropdownProps> =
 
       {open && (
         <div
-          className="absolute right-0 top-full z-[80] mt-1 flex flex-col gap-2 rounded border p-2 shadow-xl"
+          className="flex flex-col gap-2 rounded border p-2 shadow-xl"
           style={{
+            position: 'absolute',
+            top: '100%',
+            right: 0,
+            zIndex: 9999,
             width: 300,
             borderColor: '#1e2d40',
             backgroundColor: '#0d1321',
