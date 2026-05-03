@@ -29,7 +29,6 @@ export const AltitudeStrip: React.FC = React.memo(() => {
   const isAbove = altitudeAGL > CEILING_FT && inFlight;
   const isDanger = isBelow || isAbove;
   const displayAlt = Math.round(altitudeAGL);
-  const midY = (coords.ceilY + coords.floorY) / 2;
   const cx = STRIP_WIDTH / 2;
 
   const y400 = Math.max(11, coords.ceilY - 2);
@@ -201,64 +200,6 @@ export const AltitudeStrip: React.FC = React.memo(() => {
           {displayAlt}
         </text>
 
-        {coords.ceilY > 28 && (
-          <text
-            x={cx}
-            y={coords.ceilY / 2}
-            textAnchor="middle"
-            fontSize={7}
-            fill="#7f1d1d"
-            fontFamily="'Barlow Condensed', sans-serif"
-            fontWeight="600"
-            transform={`rotate(-90, ${cx}, ${coords.ceilY / 2})`}
-          >
-            CEILING
-          </text>
-        )}
-
-        {/* Döndürme yok: 90px içinde tam okunur */}
-        <text
-          x={cx}
-          y={midY - 5}
-          textAnchor="middle"
-          fontSize={7}
-          fill="#10b981"
-          fontFamily="'Barlow Condensed', sans-serif"
-          fontWeight="600"
-          opacity={0.9}
-          letterSpacing="0.04em"
-        >
-          FLIGHT
-        </text>
-        <text
-          x={cx}
-          y={midY + 9}
-          textAnchor="middle"
-          fontSize={7}
-          fill="#10b981"
-          fontFamily="'Barlow Condensed', sans-serif"
-          fontWeight="600"
-          opacity={0.9}
-          letterSpacing="0.04em"
-        >
-          WINDOW
-        </text>
-
-        {STRIP_HEIGHT - coords.floorY > 28 && (
-          <text
-            x={cx}
-            y={(coords.floorY + STRIP_HEIGHT) / 2}
-            textAnchor="middle"
-            fontSize={7}
-            fill="#7f1d1d"
-            fontFamily="'Barlow Condensed', sans-serif"
-            fontWeight="600"
-            transform={`rotate(-90, ${cx}, ${(coords.floorY + STRIP_HEIGHT) / 2})`}
-          >
-            FLOOR
-          </text>
-        )}
-
         <line
           x1={0}
           y1={coords.ceilY}
@@ -269,26 +210,6 @@ export const AltitudeStrip: React.FC = React.memo(() => {
           opacity={0.6}
         />
       </svg>
-
-      {isDanger && (
-        <div
-          className="absolute inset-0 flex items-center justify-center pointer-events-none"
-          style={{ zIndex: 10 }}
-        >
-          <div
-            className="text-red-500 font-bold text-center px-1 animate-pulse"
-            style={{
-              fontFamily: "'Barlow Condensed', sans-serif",
-              letterSpacing: '0.05em',
-              whiteSpace: 'pre-line',
-              fontSize: 10,
-              lineHeight: 1.2,
-            }}
-          >
-            {isBelow ? '⚠ BELOW\nFLOOR' : '⚠ ABOVE\nCEIL'}
-          </div>
-        </div>
-      )}
     </div>
   );
 });
