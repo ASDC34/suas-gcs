@@ -18,19 +18,24 @@ function useFlash(value: number): boolean {
   return flashing;
 }
 
+/** 12S Li-ion ~50.4V nominal; paket başına ~3.5V kritik → ~42V */
+const BATTERY_CRITICAL_VOLTAGE_V = 42;
+
 const GroundSpeedReadout: React.FC = React.memo(() => {
   const speed = useTelemetryStore((s) => s.groundSpeedKnots);
   const groundSpeedMs = useTelemetryStore((s) => s.groundSpeedMs);
   const inFlight = useTelemetryStore((s) => s.inFlight);
+  const batteryVoltage = useTelemetryStore((s) => s.batteryVoltage);
   const displaySpeed = speed.toFixed(1);
   const isFlashing = useFlash(Math.round(speed * 10));
   const isAnormal = inFlight && (speed < 2 || speed > 30);
+  const lowBatteryVoltage = batteryVoltage < BATTERY_CRITICAL_VOLTAGE_V;
 
   return (
     <div
       className={`
         hud-panel p-3 flex flex-col gap-1
-        ${isAnormal ? 'animate-blink-warn' : ''}
+        ${lowBatteryVoltage ? 'animate-blink-danger' : isAnormal ? 'animate-blink-warn' : ''}
         ${isFlashing ? 'value-flash' : ''}
       `}
     >
@@ -62,7 +67,16 @@ const GroundSpeedReadout: React.FC = React.memo(() => {
 
       <div className="text-hud-dim text-xs hud-mono">{groundSpeedMs.toFixed(1)} m/s</div>
 
-      {isAnormal && (
+      {lowBatteryVoltage && (
+        <div
+          className="text-red-400 text-xs font-bold animate-pulse"
+          style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
+        >
+          {`⚠ BUS < ${BATTERY_CRITICAL_VOLTAGE_V}V — 12S CRITICAL`}
+        </div>
+      )}
+
+      {isAnormal && !lowBatteryVoltage && (
         <div
           className="text-yellow-400 text-xs font-bold animate-pulse"
           style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
@@ -194,7 +208,7 @@ const ConnectionReadout: React.FC = React.memo(() => {
 
   const telemetryAgeMs = now - lastTelemetryMs;
   const telemetryStale = telemetryAgeMs > 2000;
-  const anyCritical = !telemetryConnected || !rcConnected || gpsFixType === 'NO_FIX' || telemetryStale;
+  const linkFault = !telemetryConnected || !rcConnected;
 
   const gpsColor =
     gpsFixType === 'RTK_FIXED'
@@ -219,7 +233,7 @@ const ConnectionReadout: React.FC = React.memo(() => {
             : '#8ba3be';
 
   return (
-    <div className={`hud-panel p-3 flex flex-col gap-2 ${anyCritical ? 'animate-blink-danger' : ''}`}>
+    <div className={`hud-panel p-3 flex flex-col gap-2 ${linkFault ? 'animate-blink-danger' : ''}`}>
       <div
         className="text-xs font-semibold tracking-widest uppercase text-hud-secondary"
         style={{ fontFamily: "'Barlow Condensed', sans-serif" }}

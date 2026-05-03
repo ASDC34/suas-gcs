@@ -165,7 +165,10 @@ export default function App() {
               <button
                 key={id}
                 type="button"
-                onClick={() => setActiveTab(id)}
+                onClick={() => {
+                  if (id === 'MAP') setActiveTab('MAP');
+                  else setActiveTab((t) => (t === 'PARAMS' ? 'MAP' : 'PARAMS'));
+                }}
                 style={{
                   padding: '4px 14px',
                   borderRadius: 3,
@@ -266,17 +269,22 @@ export default function App() {
         </aside>
 
         <div className="flex flex-1 flex-col min-h-0 p-0 relative overflow-hidden">
-          {activeTab === 'MAP' && (
-            <>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-row">
+            {activeTab === 'PARAMS' && (
+              <div
+                className="flex min-h-0 flex-shrink-0 flex-col overflow-hidden border-r border-[#1e2d40] bg-[#070b14]"
+                style={{ width: 360, minWidth: 360, maxWidth: 360 }}
+              >
+                <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-3">
+                  <ParameterPanel />
+                </div>
+              </div>
+            )}
+            <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
               <MissionMap />
               <WaypointEditorPanel />
-            </>
-          )}
-          {activeTab === 'PARAMS' && (
-            <div className="flex flex-1 min-h-0 p-3" style={{ minHeight: 0 }}>
-              <ParameterPanel />
             </div>
-          )}
+          </div>
         </div>
 
         <aside

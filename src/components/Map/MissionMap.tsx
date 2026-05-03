@@ -93,6 +93,7 @@ const WaypointLayer: React.FC = () => {
   const rwy1 = useMissionStore((s) => s.rwy1);
   const rwy2 = useMissionStore((s) => s.rwy2);
   const selectWaypoint = useMissionStore((s) => s.selectWaypoint);
+  const updateWaypoint = useMissionStore((s) => s.updateWaypoint);
 
   const activeSet = activeRunway === 'RWY1' ? rwy1 : rwy2;
   const markersRef = useRef<L.Marker[]>([]);
@@ -127,14 +128,23 @@ const WaypointLayer: React.FC = () => {
       }).addTo(map)
     );
 
-    markersRef.current = waypoints.map((wp) => {
+    markersRef.current = waypoints.map((wp, i) => {
       const marker = L.marker([wp.lat, wp.lon], {
         icon: createWaypointIcon(wp.index, wp.status, wp.type),
+        draggable: true,
       })
         .addTo(map)
         .on('click', () => {
           selectWaypoint(wp.id);
           map.panTo([wp.lat, wp.lon], { animate: true, duration: 0.5 } as any);
+        })
+        .on('drag', () => {
+          const ll = marker.getLatLng();
+          circlesRef.current[i]?.setLatLng(ll);
+        })
+        .on('dragend', () => {
+          const ll = marker.getLatLng();
+          updateWaypoint(wp.id, { lat: ll.lat, lon: ll.lng });
         });
 
       marker.bindTooltip(`WP${wp.index} · ${wp.altitudeFt}ft AGL`, {
@@ -150,7 +160,7 @@ const WaypointLayer: React.FC = () => {
       circlesRef.current.forEach((c) => c.remove());
       pathRef.current?.remove();
     };
-  }, [map, activeSet, selectWaypoint]);
+  }, [map, activeSet, selectWaypoint, updateWaypoint]);
 
   return null;
 };

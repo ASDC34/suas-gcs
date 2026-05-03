@@ -43,7 +43,7 @@ html, body, #root {
 }
 
 .hud-panel {
-  background: #0d1321;
+  background-color: #0d1321;
   border: 1px solid #1e2d40;
   border-radius: 4px;
   position: relative;

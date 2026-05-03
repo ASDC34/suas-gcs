@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, Polygon, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useMissionStore } from '../store/missionStore';
@@ -7,6 +7,8 @@ import { useTelemetrySimulator } from '../hooks/useTelemetrySimulator';
 import { createDroneIcon } from '../components/Map/mapIcons';
 import { ConnectionManagerPanel } from '../components/Controls/ConnectionManager';
 import { useConnectionStore } from '../store/connectionStore';
+
+type JudgeDisplayMode = 'FULL' | 'MAP' | 'TELEMETRY';
 
 const JudgeDroneMarker: React.FC = () => {
   const map = useMap();
@@ -94,7 +96,7 @@ const JudgeHud: React.FC = () => {
         className="hud-panel p-6 flex flex-col gap-4 shrink-0"
         style={{
           pointerEvents: 'auto',
-          background: '#0d1321f0',
+          backgroundColor: '#0d1321f0',
         }}
       >
         <div
@@ -142,35 +144,92 @@ const JudgeHud: React.FC = () => {
   );
 };
 
-/** Hakim görünümü — harita + büyük knot / ft AGL okuyucuları (Rule 3.0.6). */
+const JudgeTelemetryOnly: React.FC = () => {
+  const knots = useTelemetryStore((s) => s.groundSpeedKnots);
+  const aglFt = useTelemetryStore((s) => s.altitudeAGL);
+
+  return (
+    <div
+      className="absolute inset-0 z-[1004] flex flex-col items-center justify-center gap-10 bg-[#070b14]"
+      style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
+    >
+      <div className="flex flex-col items-center gap-2">
+        <span
+          className="hud-number text-hud-primary tabular-nums leading-none"
+          style={{ fontSize: 160 }}
+        >
+          {knots.toFixed(1)}
+        </span>
+        <span className="text-2xl font-bold tracking-[0.2em] text-hud-secondary">KTS</span>
+      </div>
+      <div className="flex flex-col items-center gap-2">
+        <span
+          className="hud-number text-hud-primary tabular-nums leading-none"
+          style={{ fontSize: 160 }}
+        >
+          {Math.round(aglFt)}
+        </span>
+        <span className="text-2xl font-bold tracking-[0.2em] text-hud-secondary">FT AGL</span>
+      </div>
+    </div>
+  );
+};
+
+/** Hakim görünümü — TAM / HARİTA / TELEMETRİ modları (Rule 3.0.6). */
 export default function JudgeDisplay() {
+  const [mode, setMode] = useState<JudgeDisplayMode>('FULL');
   const protocol = useConnectionStore((s) => s.config.protocol);
   const { resetSimulation } = useTelemetrySimulator(protocol === 'SIMULATOR');
 
+  const modeButtons: { id: JudgeDisplayMode; label: string }[] = [
+    { id: 'FULL', label: 'TAM' },
+    { id: 'MAP', label: 'HARİTA' },
+    { id: 'TELEMETRY', label: 'TELEMETRİ' },
+  ];
+
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-[#070b14]">
-      <header
-        className="pointer-events-none absolute left-4 top-4 z-[1002] flex items-center gap-3"
-      >
-        <div
-          className="pointer-events-auto hud-panel px-4 py-2"
-          style={{ fontFamily: "'Orbitron', monospace", color: '#3b82f6' }}
-        >
-          V-TECH Hakim Ekranı
+      <header className="pointer-events-none absolute left-4 right-4 top-4 z-[1005] flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div
+            className="pointer-events-auto hud-panel px-4 py-2"
+            style={{ fontFamily: "'Orbitron', monospace", color: '#3b82f6' }}
+          >
+            V-TECH Hakim Ekranı
+          </div>
+          <div
+            className="pointer-events-auto text-[10px] hud-mono uppercase text-hud-dim px-3 py-1 rounded border border-[#1e2d40] bg-[#0d1321e8]"
+            style={{
+              opacity: protocol === 'SIMULATOR' ? 0.85 : 0.95,
+            }}
+          >
+            {protocol === 'MAVLINK'
+              ? 'CANLI MAVLink'
+              : protocol === 'MAVROS'
+                ? 'CANLI MAVROS'
+                : 'SİMÜLATÖR'}
+          </div>
         </div>
-        <div
-          className="pointer-events-auto text-[10px] hud-mono uppercase text-hud-dim px-3 py-1 rounded border border-[#1e2d40] bg-[#0d1321e8]"
-          style={{
-            opacity: protocol === 'SIMULATOR' ? 0.85 : 0.95,
-          }}
-        >
-          {protocol === 'MAVLINK'
-            ? 'CANLI MAVLink'
-            : protocol === 'MAVROS'
-              ? 'CANLI MAVROS'
-              : 'SİMÜLATÖR'}
+        <div className="pointer-events-auto flex flex-wrap items-center gap-2">
+          {modeButtons.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setMode(id)}
+              className="rounded border px-3 py-1.5 text-xs font-bold tracking-widest transition-colors"
+              style={{
+                fontFamily: "'Barlow Condensed', sans-serif",
+                borderColor: mode === id ? '#3b82f6' : '#1e2d40',
+                backgroundColor: mode === id ? '#1e3a5f' : '#0d1321e8',
+                color: mode === id ? '#e0ecff' : '#8ba3be',
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </header>
+
       <div className="absolute inset-0 z-0">
         <MapContainer
           center={[36.0544, -95.9204]}
@@ -187,16 +246,23 @@ export default function JudgeDisplay() {
           <JudgeDroneMarker />
         </MapContainer>
       </div>
-      <JudgeHud />
-      <div className="absolute bottom-3 left-3 z-[1002] w-[278px] max-w-[calc(100vw-1.5rem)]">
-        <ConnectionManagerPanel resetSimulation={resetSimulation} />
-      </div>
-      <footer
-        className="absolute bottom-3 right-3 z-[1002] max-w-[min(50%,260px)] text-right text-[10px] leading-snug text-hud-dim"
-        style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
-      >
-        Rule 3.0.6 · Skyway Range · Knot / ft AGL
-      </footer>
+
+      {mode === 'FULL' && <JudgeHud />}
+      {mode === 'TELEMETRY' && <JudgeTelemetryOnly />}
+
+      {mode === 'FULL' && (
+        <>
+          <div className="pointer-events-auto absolute bottom-3 left-3 z-[1002] w-[278px] max-w-[calc(100vw-1.5rem)]">
+            <ConnectionManagerPanel resetSimulation={resetSimulation} />
+          </div>
+          <footer
+            className="pointer-events-none absolute bottom-3 right-3 z-[1002] max-w-[min(50%,260px)] text-right text-[10px] leading-snug text-hud-dim"
+            style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
+          >
+            Rule 3.0.6 · Skyway Range · Knot / ft AGL
+          </footer>
+        </>
+      )}
     </div>
   );
 }
